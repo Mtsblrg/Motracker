@@ -6,8 +6,29 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0d0d0d">
-<title>Daily Tracker</title>
+<title>Motracker</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+
+<!--
+  SUPABASE SETUP — run this SQL in your Supabase SQL Editor:
+
+  CREATE TABLE daily_tracker (
+    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+    date date NOT NULL,
+    category text NOT NULL CHECK (category IN ('spend','calories','tobacco')),
+    amount numeric NOT NULL,
+    label text,
+    time text,
+    entry_id bigint NOT NULL,
+    created_at timestamptz DEFAULT now()
+  );
+
+  ALTER TABLE daily_tracker ENABLE ROW LEVEL SECURITY;
+
+  CREATE POLICY "anon_all" ON daily_tracker
+    FOR ALL TO anon USING (true) WITH CHECK (true);
+-->
+
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   html, body { height: 100%; background: #0d0d0d; color: #fff; font-family: 'DM Mono', monospace; overscroll-behavior: none; }
@@ -57,6 +78,9 @@
   .entry-del { background: none; border: none; color: #ff444877; font-size: 18px; cursor: pointer; padding: 0 2px; line-height: 1; flex-shrink: 0; }
   .empty { color: #333; font-size: 12px; text-align: center; padding: 16px 0; }
 
+  /* Loading */
+  .loading { color: #333; font-size: 11px; text-align: center; padding: 16px 0; letter-spacing: 1px; }
+
   /* Quick add */
   .quick-section { padding: 12px 16px 0; flex-shrink: 0; }
   .quick-label { font-size: 10px; letter-spacing: 1px; color: #333; margin-bottom: 7px; }
@@ -79,7 +103,7 @@
 
 <div class="header">
   <div>
-    <div class="header-title">DAILY TRACKER</div>
+    <div class="header-title">MOTRACKER</div>
     <div class="header-date" id="headerDate"></div>
   </div>
   <div class="view-toggle">
@@ -89,10 +113,7 @@
 </div>
 
 <div id="todayView">
-  <!-- Cards -->
   <div class="cards" id="cards"></div>
-
-  <!-- Active panel -->
   <div class="panel" id="panel">
     <div class="panel-header">
       <span class="panel-title" id="panelTitle"></span>
@@ -105,8 +126,6 @@
     </div>
     <div class="entries" id="entries"></div>
   </div>
-
-  <!-- Quick add -->
   <div class="quick-section">
     <div class="quick-label">QUICK ADD</div>
     <div class="quick-pills" id="quickPills"></div>
@@ -118,6 +137,10 @@
 </div>
 
 <script>
+// Supabase config
+const SUPABASE_URL = 'https://fwqhomgawlgicqiqqqhw.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_kv4yP6HjULXzFd085xnyQQ_q98QohZs'; // lol u care how much i smoke
+
 const CATS = {
   spend:    { label:'Spend',    unit:'HUF',  icon:'💰', color:'#f0a500', bg:'#1a1400', goal:10000 },
   calories: { label:'Calories', unit:'kcal', icon:'🔥', color:'#e05a2b', bg:'#180e08', goal:2200  },
@@ -131,32 +154,97 @@ const QUICK = {
 
 let activeTab = 'spend';
 let currentView = 'today';
+let todayCache = { spend:[], calories:[], tobacco:[] }; // in-memory cache for today
 
 const todayKey = () => new Date().toISOString().slice(0,10);
 
-function loadData() {
-  try { return JSON.parse(localStorage.getItem('daily_tracker_v2') || '{}'); } catch { return {}; }
+// --- Supabase helpers ---
+async function sbFetch(path, options={}) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    ...options,
+    headers: {
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=representation',
+      ...(options.headers||{})
+    }
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Supabase error: ${res.status} ${err}`);
+  }
+  const text = await res.text();
+  return text ? JSON.parse(text) : [];
 }
-function saveData(d) {
-  try { localStorage.setItem('daily_tracker_v2', JSON.stringify(d)); } catch {}
+
+async function fetchToday() {
+  const rows = await sbFetch(`daily_tracker?date=eq.${todayKey()}&order=entry_id.asc`);
+  // Rebuild cache structure
+  todayCache = { spend:[], calories:[], tobacco:[] };
+  for (const row of rows) {
+    if (todayCache[row.category]) {
+      todayCache[row.category].push({
+        id: row.entry_id,
+        amount: parseFloat(row.amount),
+        label: row.label || '',
+        time: row.time || ''
+      });
+    }
+  }
 }
-function todayData() {
-  const d = loadData(); const k = todayKey();
-  if (!d[k]) d[k] = {spend:[],calories:[],tobacco:[]};
-  return d[k];
+
+async function fetchHistory() {
+  const rows = await sbFetch(`daily_tracker?order=date.desc,entry_id.asc&limit=500`);
+  // Group by date → category
+  const grouped = {};
+  for (const row of rows) {
+    if (!grouped[row.date]) grouped[row.date] = { spend:[], calories:[], tobacco:[] };
+    if (grouped[row.date][row.category]) {
+      grouped[row.date][row.category].push({
+        id: row.entry_id,
+        amount: parseFloat(row.amount),
+        label: row.label || '',
+        time: row.time || ''
+      });
+    }
+  }
+  return grouped;
 }
-function total(cat) {
-  return (todayData()[cat]||[]).reduce((s,e)=>s+e.amount,0);
+
+async function insertEntry(category, amount, label) {
+  await sbFetch('daily_tracker', {
+    method: 'POST',
+    body: JSON.stringify({
+      date: todayKey(),
+      category,
+      amount,
+      label,
+      time: nowTime(),
+      entry_id: Date.now()
+    })
+  });
 }
-function fmtNum(n) { return n%1===0 ? n : n.toFixed(1); }
+
+async function deleteEntryRemote(entryId) {
+  await sbFetch(`daily_tracker?entry_id=eq.${entryId}&date=eq.${todayKey()}`, {
+    method: 'DELETE'
+  });
+}
+
+// --- Utils ---
+function fmtNum(n) { return n%1===0 ? n : parseFloat(n.toFixed(1)); }
 function fmtDate(str) {
   return new Date(str+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}).toUpperCase();
 }
 function nowTime() {
   return new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
 }
+function total(cat) {
+  return (todayCache[cat]||[]).reduce((s,e)=>s+e.amount,0);
+}
 
-// Radial SVG
+// --- Radial SVG ---
 function radialSVG(val, max, color, size=60) {
   const r=(size-8)/2, circ=2*Math.PI*r, pct=Math.min(val/max,1), dash=pct*circ;
   const over=val>max, c=over?'#ff4444':color;
@@ -168,6 +256,7 @@ function radialSVG(val, max, color, size=60) {
   </svg>`;
 }
 
+// --- Render ---
 function renderCards() {
   const el = document.getElementById('cards');
   el.innerHTML = Object.entries(CATS).map(([key,c])=>{
@@ -195,7 +284,7 @@ function renderPanel() {
   document.getElementById('addBtn').style.background = c.color;
   document.getElementById('addBtn').style.color = over?'#fff':'#000';
 
-  const entries = [...(todayData()[activeTab]||[])].reverse();
+  const entries = [...(todayCache[activeTab]||[])].reverse();
   const el = document.getElementById('entries');
   if (!entries.length) {
     el.innerHTML = '<div class="empty">No entries yet today</div>';
@@ -205,7 +294,7 @@ function renderPanel() {
         <span class="entry-time">${e.time}</span>
         <span class="entry-label">${e.label||'—'}</span>
         <span class="entry-amt">${fmtNum(e.amount)}</span>
-        <button class="entry-del" onclick="deleteEntry('${activeTab}',${e.id})">×</button>
+        <button class="entry-del" onclick="deleteEntry(${e.id})">×</button>
       </div>`).join('');
   }
 }
@@ -219,7 +308,6 @@ function renderQuick() {
 }
 
 function render() {
-  // Header date
   document.getElementById('headerDate').textContent = fmtDate(todayKey());
   renderCards();
   renderPanel();
@@ -243,58 +331,100 @@ function setView(v) {
   if (v==='history') renderHistory();
 }
 
-function renderHistory() {
-  const data = loadData();
-  const days = Object.keys(data).sort((a,b)=>b.localeCompare(a)).slice(0,14);
+async function renderHistory() {
   const el = document.getElementById('historyContent');
-  if (!days.length) { el.innerHTML='<div class="empty" style="padding:40px 0">No history yet</div>'; return; }
-  el.innerHTML = '<div class="hist-label">LAST 14 DAYS</div>' + days.map(day=>{
-    const d = data[day]||{};
-    const isToday = day===todayKey();
-    const cols = Object.entries(CATS).map(([key,c])=>{
-      const t=(d[key]||[]).reduce((s,e)=>s+e.amount,0);
-      const col=t>c.goal?'#ff4444':t>0?c.color:'#333';
-      return `<div><div class="hist-emoji">${c.icon}</div>
-        <div class="hist-val" style="color:${col}">${fmtNum(t)}</div>
-        <div class="hist-unit">${c.unit}</div></div>`;
+  el.innerHTML = '<div class="loading">LOADING...</div>';
+  try {
+    const data = await fetchHistory();
+    const days = Object.keys(data).sort((a,b)=>b.localeCompare(a)).slice(0,14);
+    if (!days.length) { el.innerHTML='<div class="empty" style="padding:40px 0">No history yet</div>'; return; }
+    el.innerHTML = '<div class="hist-label">LAST 14 DAYS</div>' + days.map(day=>{
+      const d = data[day]||{};
+      const isToday = day===todayKey();
+      const cols = Object.entries(CATS).map(([key,c])=>{
+        const t=(d[key]||[]).reduce((s,e)=>s+e.amount,0);
+        const col=t>c.goal?'#ff4444':t>0?c.color:'#333';
+        return `<div><div class="hist-emoji">${c.icon}</div>
+          <div class="hist-val" style="color:${col}">${fmtNum(t)}</div>
+          <div class="hist-unit">${c.unit}</div></div>`;
+      }).join('');
+      return `<div class="hist-day">
+        <div class="hist-date">${fmtDate(day)}${isToday?' · TODAY':''}</div>
+        <div class="hist-cols">${cols}</div>
+      </div>`;
     }).join('');
-    return `<div class="hist-day">
-      <div class="hist-date">${fmtDate(day)}${isToday?' · TODAY':''}</div>
-      <div class="hist-cols">${cols}</div>
-    </div>`;
-  }).join('');
+  } catch(e) {
+    el.innerHTML = `<div class="empty" style="padding:40px 0">Error loading history</div>`;
+  }
 }
 
-function addEntry() {
+// --- Actions ---
+async function addEntry() {
   const amt = parseFloat(document.getElementById('inputAmt').value);
   if (!amt || isNaN(amt)) return;
   const lbl = document.getElementById('inputLbl').value.trim();
-  const data = loadData(); const k = todayKey();
-  if (!data[k]) data[k]={spend:[],calories:[],tobacco:[]};
-  data[k][activeTab].push({ id:Date.now(), amount:amt, label:lbl, time:nowTime() });
-  saveData(data);
-  document.getElementById('inputAmt').value='';
-  document.getElementById('inputLbl').value='';
+  document.getElementById('inputAmt').value = '';
+  document.getElementById('inputLbl').value = '';
+
+  // Optimistic update
+  const entry = { id: Date.now(), amount: amt, label: lbl, time: nowTime() };
+  todayCache[activeTab].push(entry);
+  render();
+
+  try {
+    await insertEntry(activeTab, amt, lbl);
+  } catch(e) {
+    // Rollback
+    todayCache[activeTab] = todayCache[activeTab].filter(x=>x.id!==entry.id);
+    render();
+    alert('Failed to save. Check connection.');
+  }
+}
+
+async function quickAdd(amt, emoji) {
+  const amount = parseFloat(amt);
+  const entry = { id: Date.now(), amount, label: emoji, time: nowTime() };
+  todayCache[activeTab].push(entry);
+  render();
+
+  try {
+    await insertEntry(activeTab, amount, emoji);
+  } catch(e) {
+    todayCache[activeTab] = todayCache[activeTab].filter(x=>x.id!==entry.id);
+    render();
+    alert('Failed to save. Check connection.');
+  }
+}
+
+async function deleteEntry(entryId) {
+  // Optimistic update
+  const prev = { ...todayCache };
+  todayCache[activeTab] = todayCache[activeTab].filter(e=>e.id!==entryId);
+  render();
+
+  try {
+    await deleteEntryRemote(entryId);
+  } catch(e) {
+    todayCache = prev;
+    render();
+    alert('Failed to delete. Check connection.');
+  }
+}
+
+// --- Init ---
+async function init() {
+  document.getElementById('headerDate').textContent = fmtDate(todayKey());
+  renderCards();
+  document.getElementById('entries').innerHTML = '<div class="loading">LOADING...</div>';
+  try {
+    await fetchToday();
+  } catch(e) {
+    document.getElementById('entries').innerHTML = '<div class="empty">Failed to load — check connection</div>';
+  }
   render();
 }
 
-function quickAdd(amt, emoji) {
-  const data = loadData(); const k = todayKey();
-  if (!data[k]) data[k]={spend:[],calories:[],tobacco:[]};
-  data[k][activeTab].push({ id:Date.now(), amount:parseFloat(amt), label:emoji, time:nowTime() });
-  saveData(data);
-  render();
-}
-
-function deleteEntry(cat, id) {
-  const data = loadData(); const k = todayKey();
-  if (!data[k]||!data[k][cat]) return;
-  data[k][cat] = data[k][cat].filter(e=>e.id!==id);
-  saveData(data);
-  render();
-}
-
-render();
+init();
 </script>
 </body>
 </html>
