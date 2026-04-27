@@ -27,6 +27,10 @@
 
   CREATE POLICY "anon_all" ON daily_tracker
     FOR ALL TO anon USING (true) WITH CHECK (true);
+
+  -- Claude estimate columns (added for morning routine accuracy tracking):
+  ALTER TABLE daily_tracker ADD COLUMN IF NOT EXISTS claude_estimate numeric;
+  ALTER TABLE daily_tracker ADD COLUMN IF NOT EXISTS guess_accuracy numeric;
 -->
 
 <style>
@@ -97,6 +101,12 @@
   .hist-emoji { font-size: 10px; margin-bottom: 2px; }
   .hist-val { font-size: 14px; font-weight: 500; }
   .hist-unit { font-size: 9px; color: #444; }
+
+  /* Calorie accuracy row */
+  .hist-accuracy { margin-top: 9px; padding-top: 8px; border-top: 1px solid #1e1e1e; display: flex; justify-content: space-between; align-items: center; }
+  .hist-accuracy-label { font-size: 9px; color: #444; letter-spacing: 0.5px; }
+  .hist-accuracy-val { font-size: 11px; font-weight: 500; letter-spacing: 0.5px; }
+  .hist-accuracy-sub { font-size: 9px; color: #444; text-align: right; }
 </style>
 </head>
 <body>
@@ -196,17 +206,31 @@ async function fetchToday() {
 
 async function fetchHistory() {
   const rows = await sbFetch(`daily_tracker?order=date.desc,entry_id.asc&limit=500`);
-  // Group by date → category
+  // Group by date → category, and track calorie accuracy per day
   const grouped = {};
   for (const row of rows) {
-    if (!grouped[row.date]) grouped[row.date] = { spend:[], calories:[], tobacco:[] };
-    if (grouped[row.date][row.category]) {
+    if (!grouped[row.date]) grouped[row.date] = { spend:[], calories:[], tobacco:[], cal_accuracy: null, cal_claude_total: null };
+    if (grouped[row.date][row.category] !== undefined && Array.isArray(grouped[row.date][row.category])) {
       grouped[row.date][row.category].push({
         id: row.entry_id,
         amount: parseFloat(row.amount),
         label: row.label || '',
-        time: row.time || ''
+        time: row.time || '',
+        claude_estimate: row.claude_estimate != null ? parseFloat(row.claude_estimate) : null,
+        guess_accuracy: row.guess_accuracy != null ? parseFloat(row.guess_accuracy) : null,
       });
+    }
+  }
+  // Compute per-day calorie accuracy summary from individual rows
+  for (const day of Object.keys(grouped)) {
+    const calRows = grouped[day].calories;
+    const withEstimates = calRows.filter(e => e.claude_estimate != null);
+    if (withEstimates.length > 0) {
+      const userTotal = withEstimates.reduce((s, e) => s + e.amount, 0);
+      const claudeTotal = withEstimates.reduce((s, e) => s + e.claude_estimate, 0);
+      grouped[day].cal_claude_total = claudeTotal;
+      // guess_accuracy: positive = over-estimated, negative = under-estimated
+      grouped[day].cal_accuracy = claudeTotal > 0 ? Math.round(((userTotal - claudeTotal) / claudeTotal) * 100) : null;
     }
   }
   return grouped;
@@ -348,9 +372,30 @@ async function renderHistory() {
           <div class="hist-val" style="color:${col}">${fmtNum(t)}</div>
           <div class="hist-unit">${c.unit}</div></div>`;
       }).join('');
+
+      // Calorie accuracy row — only shown if claude estimates exist for this day
+      let accuracyRow = '';
+      if (d.cal_accuracy != null && d.cal_claude_total != null) {
+        const acc = d.cal_accuracy;
+        const accColor = Math.abs(acc) <= 10 ? '#7eb8a0' : Math.abs(acc) <= 25 ? '#f0a500' : '#ff4444';
+        const accSign = acc > 0 ? '+' : '';
+        const claudeTotal = Math.round(d.cal_claude_total);
+        accuracyRow = `<div class="hist-accuracy">
+          <div>
+            <div class="hist-accuracy-label">🤖 CLAUDE EST.</div>
+            <div class="hist-accuracy-val" style="color:#e05a2b">${claudeTotal} kcal</div>
+          </div>
+          <div style="text-align:right">
+            <div class="hist-accuracy-label">YOUR GUESS</div>
+            <div class="hist-accuracy-val" style="color:${accColor}">${accSign}${acc}%</div>
+          </div>
+        </div>`;
+      }
+
       return `<div class="hist-day">
         <div class="hist-date">${fmtDate(day)}${isToday?' · TODAY':''}</div>
         <div class="hist-cols">${cols}</div>
+        ${accuracyRow}
       </div>`;
     }).join('');
   } catch(e) {
