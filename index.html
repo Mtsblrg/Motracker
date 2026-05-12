@@ -105,13 +105,21 @@
   .list-item:last-child { border-bottom: none; }
   .list-item:active { background: var(--surface-hover); }
   .list-item.optimistic { opacity: 0.55; }
-  .list-item.pressing {
+
+  /* shared long-press visual states (applies to .list-item AND .food-entry) */
+  .long-pressable {
+    -webkit-user-select: none; user-select: none;
+    -webkit-touch-callout: none;
+    position: relative;
+  }
+  .long-pressable.pressing {
     background: var(--danger-bg);
     transform: scale(0.98);
     transition: background 0.5s ease-out, transform 0.5s ease-out;
   }
-  .list-item.armed { background: var(--danger-bg); }
-  .list-item.armed:active { background: var(--danger-bg); }
+  .long-pressable.armed { background: var(--danger-bg); }
+  .long-pressable.armed:active { background: var(--danger-bg); }
+
   .delete-confirm-bar { display: flex; align-items: center; gap: 12px; width: 100%; }
   .delete-confirm-text { flex: 1; font-size: 14px; color: var(--text-dim); }
   .delete-confirm-delete {
@@ -125,6 +133,11 @@
     padding: 6px 14px; border-radius: 6px; font-size: 13px;
     cursor: pointer;
   }
+  /* compact confirm bar for food entries (smaller card) */
+  .food-entry .delete-confirm-text { font-size: 13px; }
+  .food-entry .delete-confirm-delete { padding: 5px 12px; font-size: 12px; }
+  .food-entry .delete-confirm-cancel { padding: 5px 10px; font-size: 12px; }
+
   .checkbox {
     width: 20px; height: 20px; border: 1.5px solid var(--text-faint);
     border-radius: 6px; flex-shrink: 0; margin-top: 1px;
@@ -272,7 +285,10 @@
     background: rgba(196, 240, 96, 0.04);
     border: 1px solid rgba(196, 240, 96, 0.12);
     border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.1s, transform 0.5s ease-out;
   }
+  .food-entry:active { background: rgba(196, 240, 96, 0.08); }
   .food-entry-head {
     display: flex; justify-content: space-between; align-items: baseline;
     margin-bottom: 4px;
@@ -457,12 +473,38 @@
   let SHOPPING = [];
   let CALORIES_TODAY = 0;
   let SPEND_TODAY = 0;
-  let FOOD_ENTRIES = []; // [{created_at, value, note}]
+  let FOOD_ENTRIES = []; // [{id, created_at, value, note}]
   let RECENT_CAPTURES = []; // grouped { entry, routes:[{table, route_label}] }
   let GOALS = { calories: 2500, spend: 10000 };
 
   let CAPTURES_OPEN = false;
   let FOOD_OPEN = false;
+
+  // ============================================
+  // DELETABLE REGISTRY
+  // Each entry: how to find a row by id, re-render its container, and label it.
+  // Adding a new long-pressable type = add a new entry here.
+  // ============================================
+  const DELETABLES = {
+    tasks: {
+      array: () => TASKS,
+      render: () => renderTasks(),
+      label:  row => row.text,
+    },
+    shopping: {
+      array: () => SHOPPING,
+      render: () => renderShopping(),
+      label:  row => row.item,
+    },
+    metrics: {
+      array: () => FOOD_ENTRIES,
+      render: () => renderCaloriesMetric(),
+      label:  row => row.note || '(no description)',
+      // metrics deletion also affects the calories total
+      afterRemove: row => { CALORIES_TODAY -= +row.value; },
+      afterRestore: row => { CALORIES_TODAY += +row.value; },
+    },
+  };
 
   // ============================================
   // REST HELPERS
@@ -524,12 +566,12 @@
   }
 
   async function loadMetrics() {
-    const url = `metrics?date=eq.${TODAY}&metric_type=in.(calories,spend)&select=metric_type,value,note,created_at&order=created_at.desc`;
+    const url = `metrics?date=eq.${TODAY}&metric_type=in.(calories,spend)&select=id,metric_type,value,note,created_at&order=created_at.desc`;
     const rows = await sbGet(url);
     CALORIES_TODAY = rows.filter(r => r.metric_type === "calories").reduce((s, r) => s + +r.value, 0);
     SPEND_TODAY    = rows.filter(r => r.metric_type === "spend").reduce((s, r) => s + +r.value, 0);
     FOOD_ENTRIES   = rows.filter(r => r.metric_type === "calories")
-                         .map(r => ({ created_at: r.created_at, value: +r.value, note: r.note }));
+                         .map(r => ({ id: r.id, created_at: r.created_at, value: +r.value, note: r.note }));
   }
 
   // Load today's captures = entries + their routed siblings via entry_id FK.
@@ -701,7 +743,7 @@
       }
       (t.tags || []).forEach(tg => meta.push(tagPill(tg)));
       return `
-        <div class="list-item ${t.done ? 'done' : ''}" data-type="tasks" data-id="${t.id}">
+        <div class="list-item long-pressable ${t.done ? 'done' : ''}" data-type="tasks" data-id="${t.id}">
           <div class="checkbox"></div>
           <div class="item-body">
             <div class="item-text">${escapeHtml(t.text)}</div>
@@ -730,7 +772,7 @@
       }
       (s.tags || []).forEach(tg => meta.push(tagPill(tg)));
       return `
-        <div class="list-item ${s.done ? 'done' : ''}" data-type="shopping" data-id="${s.id}">
+        <div class="list-item long-pressable ${s.done ? 'done' : ''}" data-type="shopping" data-id="${s.id}">
           <div class="checkbox"></div>
           <div class="item-body">
             <div class="item-text">${escapeHtml(s.item)}</div>
@@ -759,7 +801,7 @@
         .slice()
         .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
         .map(f => `
-          <div class="food-entry">
+          <div class="food-entry long-pressable" data-type="metrics" data-id="${f.id}">
             <div class="food-entry-head">
               <span class="food-entry-time">${fmtTime(f.created_at)}</span>
               <span class="food-entry-kcal">${f.value.toLocaleString()} kcal</span>
@@ -949,14 +991,17 @@
     // If there's already a pending delete, commit it immediately
     if (PENDING_DELETE) commitPendingDelete();
 
-    const arr = table === 'tasks' ? TASKS : SHOPPING;
+    const spec = DELETABLES[table];
+    if (!spec) { console.warn('unknown deletable type:', table); return; }
+    const arr = spec.array();
     const idx = arr.findIndex(r => r.id === id);
     if (idx === -1) return;
     const row = arr[idx];
 
     // Optimistic remove from in-memory state + re-render
     arr.splice(idx, 1);
-    if (table === 'tasks') renderTasks(); else renderShopping();
+    if (spec.afterRemove) spec.afterRemove(row);
+    spec.render();
 
     // Stash the pending delete + restore-index so undo can put it back
     PENDING_DELETE = {
@@ -964,8 +1009,8 @@
       timer: setTimeout(() => commitPendingDelete(), UNDO_TIMEOUT_MS),
     };
 
-    const label = table === 'tasks' ? row.text : row.item;
-    const truncated = label.length > 32 ? label.slice(0, 32) + '…' : label;
+    const rawLabel = spec.label(row);
+    const truncated = rawLabel.length > 32 ? rawLabel.slice(0, 32) + '…' : rawLabel;
     showToast(`deleted "${truncated}"`, {
       action: true,
       actionLabel: 'UNDO',
@@ -975,10 +1020,12 @@
         if (!p || p.committed) return;
         clearTimeout(p.timer);
         // Re-insert at original index
-        const a = p.table === 'tasks' ? TASKS : SHOPPING;
+        const s = DELETABLES[p.table];
+        const a = s.array();
         a.splice(Math.min(p.originalIndex, a.length), 0, p.row);
+        if (s.afterRestore) s.afterRestore(p.row);
         PENDING_DELETE = null;
-        if (p.table === 'tasks') renderTasks(); else renderShopping();
+        s.render();
       },
     });
   }
@@ -987,7 +1034,7 @@
   // INTERACTIONS — click (toggle done) + long-press (delete)
   // ============================================
   let pressState = null; // { item, table, id, timer, startX, startY, fired }
-  let ARMED = null; // { table, id, item } — row awaiting delete confirmation
+  let ARMED = null; // { table, id, item, originalHTML } — row awaiting delete confirmation
   const MOVE_THRESHOLD = 10; // pixels — cancel press if finger moves more
 
   function getEventPos(e) {
@@ -1025,7 +1072,7 @@
   }
 
   function armRow(item, table, id) {
-    ARMED = { table, id, item };
+    ARMED = { table, id, item, originalHTML: item.innerHTML };
     item.classList.add('armed');
     item.innerHTML = `
       <div class="delete-confirm-bar">
@@ -1039,21 +1086,24 @@
     if (!ARMED) return;
     const { table } = ARMED;
     ARMED = null;
-    if (table === 'tasks') renderTasks(); else renderShopping();
+    const spec = DELETABLES[table];
+    if (spec) spec.render();
   }
 
   // Use pointer events where available, fall back to touch + mouse
   document.addEventListener('pointerdown', e => {
     if (e.target.closest('.toast')) return;
     if (e.target.closest('.source')) return;
-    const target = e.target.closest('.list-item');
+    // food entries live inside the foodToggle's sibling — don't start press on the toggle itself
+    if (e.target.closest('#foodToggle')) return;
+    const target = e.target.closest('.long-pressable');
     if (!target) return;
     if (target.classList.contains('armed')) return; // confirm bar handles via click
     if (ARMED) {
       clearArmed();
       // Get fresh DOM reference after re-render
       const fresh = document.querySelector(
-        `.list-item[data-type="${target.dataset.type}"][data-id="${target.dataset.id}"]`);
+        `.long-pressable[data-type="${target.dataset.type}"][data-id="${target.dataset.id}"]`);
       if (!fresh) return;
       startPress(e, fresh);
     } else {
@@ -1078,7 +1128,7 @@
   // Suppress the native context menu when a long press fires (so Android/iOS
   // don't try to pop their own selection menu after our 500ms hold).
   document.addEventListener('contextmenu', e => {
-    if (e.target.closest('.list-item')) e.preventDefault();
+    if (e.target.closest('.long-pressable')) e.preventDefault();
   });
 
   // CLICK = armed confirm buttons, or toggle done (only if long-press didn't fire)
@@ -1091,13 +1141,16 @@
       return;
     }
     if (e.target.classList.contains('delete-confirm-cancel') ||
-        (ARMED && !e.target.closest('.list-item.armed'))) {
+        (ARMED && !e.target.closest('.long-pressable.armed'))) {
       clearArmed();
       return;
     }
     if (ARMED) return; // tap inside armed row but not on a button — ignore
 
     if (e.target.closest('.source')) return;
+    // Food-toggle clicks are handled by the toggle's own listener
+    if (e.target.closest('#foodToggle')) return;
+
     const item = e.target.closest('.list-item');
     if (!item) return;
     if (item.classList.contains('optimistic')) return;
@@ -1106,6 +1159,8 @@
 
     const id = +item.dataset.id;
     const table = item.dataset.type;
+    // Only tasks/shopping have a done-toggle. Metrics (food entries) have no click action.
+    if (table !== 'tasks' && table !== 'shopping') return;
     const arr = table === 'tasks' ? TASKS : SHOPPING;
     const row = arr.find(r => r.id === id);
     if (!row) return;
