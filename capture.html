@@ -187,7 +187,6 @@
   };
 
   const PAGE_SIZE = 50;
-  const MATCH_WINDOW_MS = 3000;
 
   // ============================================
   // STATE
@@ -223,8 +222,6 @@
 
   function fmtDateHeader(iso) {
     const today = todayBP();
-    const tomorrow = new Date(new Date(today + 'T00:00:00').getTime() + 86400000)
-      .toISOString().slice(0, 10);
     const yesterday = new Date(new Date(today + 'T00:00:00').getTime() - 86400000)
       .toISOString().slice(0, 10);
     const dayName = new Date(iso + 'T00:00:00')
@@ -250,7 +247,7 @@
   }
 
   // ============================================
-  // FETCH — paged
+  // FETCH — paged, route detection via entry_id FK
   // ============================================
   async function fetchPage(beforeISO = null) {
     let entriesQ = `entries?select=*&order=created_at.desc&limit=${PAGE_SIZE}`;
@@ -258,38 +255,35 @@
     const entries = await sbGet(entriesQ);
     if (entries.length === 0) return [];
 
-    // Time window for sibling lookup — from oldest entry in this batch to newest
-    const oldest = entries[entries.length - 1].created_at;
-    const newest = entries[0].created_at;
-    // Expand each side by MATCH_WINDOW_MS so writes near edge are matched
-    const fromISO = new Date(new Date(oldest).getTime() - MATCH_WINDOW_MS).toISOString();
-    const toISO   = new Date(new Date(newest).getTime() + MATCH_WINDOW_MS).toISOString();
-    const range = `created_at=gte.${fromISO}&created_at=lte.${toISO}`;
+    const entryIds = entries.map(e => e.id);
+    const idFilter = `entry_id=in.(${entryIds.join(',')})`;
 
     const [tasksRows, shoppingRows, notesRows, remindersRows, metricsRows] = await Promise.all([
-      sbGet(`tasks?${range}&select=id,created_at`),
-      sbGet(`shopping?${range}&select=id,created_at`),
-      sbGet(`notes?${range}&select=id,created_at`),
-      sbGet(`reminders?${range}&select=id,created_at`),
-      sbGet(`metrics?${range}&select=id,created_at,metric_type`),
+      sbGet(`tasks?${idFilter}&select=entry_id`),
+      sbGet(`shopping?${idFilter}&select=entry_id`),
+      sbGet(`notes?${idFilter}&select=entry_id`),
+      sbGet(`reminders?${idFilter}&select=entry_id`),
+      sbGet(`metrics?${idFilter}&select=entry_id,metric_type`),
     ]);
 
+    // Build lookup: entryId -> Set of route labels (Set dedups)
+    const routesByEntry = new Map();
+    function add(entryId, label) {
+      if (!routesByEntry.has(entryId)) routesByEntry.set(entryId, new Set());
+      routesByEntry.get(entryId).add(label);
+    }
+    tasksRows.forEach(r => add(r.entry_id, 'tasks'));
+    shoppingRows.forEach(r => add(r.entry_id, 'shopping'));
+    notesRows.forEach(r => add(r.entry_id, 'note'));
+    remindersRows.forEach(r => add(r.entry_id, 'reminder'));
+    metricsRows.forEach(r => add(r.entry_id, r.metric_type));
+
     return entries.map(e => {
-      const t0 = new Date(e.created_at).getTime();
-      const within = (row) => Math.abs(new Date(row.created_at).getTime() - t0) <= MATCH_WINDOW_MS;
-      const routes = [];
-      if (tasksRows.some(within))     routes.push({ label: 'tasks' });
-      if (shoppingRows.some(within))  routes.push({ label: 'shopping' });
-      if (notesRows.some(within))     routes.push({ label: 'note' });
-      if (remindersRows.some(within)) routes.push({ label: 'reminder' });
-      const matchedMetrics = metricsRows.filter(within);
-      const seen = new Set();
-      matchedMetrics.forEach(m => {
-        if (seen.has(m.metric_type)) return;
-        seen.add(m.metric_type);
-        routes.push({ label: m.metric_type });
-      });
-      return { entry: e, routes };
+      const labels = routesByEntry.has(e.id) ? Array.from(routesByEntry.get(e.id)) : [];
+      return {
+        entry: e,
+        routes: labels.map(label => ({ label })),
+      };
     });
   }
 
