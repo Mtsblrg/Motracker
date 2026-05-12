@@ -74,12 +74,20 @@
   section { margin-bottom: 18px; }
   .section-head {
     display: flex; align-items: baseline; justify-content: space-between; padding: 0 4px 8px;
+    cursor: default;
+    -webkit-user-select: none; user-select: none;
   }
+  .section-head.collapsible { cursor: pointer; }
   .section-head h2 {
     font-size: 11px; font-weight: 600; letter-spacing: 2px;
     text-transform: uppercase; color: var(--text-dim);
   }
   .section-head .count { font-size: 12px; color: var(--text-faint); }
+  .section-head .chevron {
+    font-size: 12px; color: var(--text-faint);
+    transition: transform 0.2s; display: inline-block;
+  }
+  .section-head .chevron.open { transform: rotate(180deg); }
 
   .list {
     background: var(--surface); border: 1px solid var(--border-strong);
@@ -152,6 +160,23 @@
   .tag-fusi     { background: rgba(212, 83, 126, 0.12); color: #ed93b1; border-color: rgba(212, 83, 126, 0.3); }
   .tag-default  { background: var(--border); color: var(--text-dim); border-color: var(--border-strong); }
 
+  /* table-route tags for captures list */
+  .route {
+    font-size: 10px; padding: 2px 8px; border-radius: 10px;
+    font-weight: 500; letter-spacing: 0.3px;
+    border: 1px solid transparent; white-space: nowrap; flex-shrink: 0;
+  }
+  .route-tasks    { background: rgba(55, 138, 221, 0.12); color: #85b7eb; border-color: rgba(55, 138, 221, 0.25); }
+  .route-shopping { background: rgba(29, 158, 117, 0.12); color: #5dcaa5; border-color: rgba(29, 158, 117, 0.25); }
+  .route-calories { background: rgba(196, 240, 96, 0.12); color: #c4f060; border-color: rgba(196, 240, 96, 0.25); }
+  .route-spend    { background: rgba(186, 117, 23, 0.12); color: #f0a955; border-color: rgba(186, 117, 23, 0.3); }
+  .route-tobacco  { background: rgba(216, 90, 48, 0.12); color: #f0997b; border-color: rgba(216, 90, 48, 0.3); }
+  .route-metric   { background: rgba(168, 172, 180, 0.12); color: var(--text-dim); border-color: var(--border-strong); }
+  .route-note     { background: rgba(127, 119, 221, 0.15); color: #afa9ec; border-color: rgba(127, 119, 221, 0.3); }
+  .route-reminder { background: rgba(212, 83, 126, 0.12); color: #ed93b1; border-color: rgba(212, 83, 126, 0.3); }
+  .route-entry    { background: var(--border); color: var(--text-faint); border-color: var(--border-strong); }
+  .route-multi    { background: rgba(168, 172, 180, 0.12); color: var(--text-dim); border-color: var(--border-strong); }
+
   .source {
     display: inline-flex; align-items: center; gap: 4px;
     padding: 3px 8px 3px 6px;
@@ -221,6 +246,62 @@
   .metric-foot .remaining { color: var(--accent-dim); font-weight: 500; }
   .metric-foot .remaining.over { color: var(--danger); }
 
+  /* expandable detail under a metric */
+  .metric-detail {
+    margin-top: 14px; padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+  .metric-detail-toggle {
+    display: flex; justify-content: space-between; align-items: center;
+    cursor: pointer; user-select: none; -webkit-user-select: none;
+  }
+  .metric-detail-toggle .label {
+    font-size: 12px; color: var(--text-dim); letter-spacing: 0.5px;
+  }
+  .metric-detail-toggle .chevron {
+    font-size: 13px; color: var(--text-faint);
+    transition: transform 0.2s;
+  }
+  .metric-detail-toggle .chevron.open { transform: rotate(180deg); }
+  .metric-detail-body {
+    margin-top: 10px; display: flex; flex-direction: column; gap: 8px;
+  }
+  .metric-detail-body.hidden { display: none; }
+  .food-entry {
+    padding: 8px 10px;
+    background: rgba(196, 240, 96, 0.04);
+    border: 1px solid rgba(196, 240, 96, 0.12);
+    border-radius: 8px;
+  }
+  .food-entry-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 4px;
+  }
+  .food-entry-time { font-size: 12px; color: var(--text-faint); }
+  .food-entry-kcal { font-size: 12px; color: var(--accent); font-weight: 500; }
+  .food-entry-note {
+    font-size: 13px; color: var(--text); line-height: 1.4;
+    word-wrap: break-word;
+  }
+
+  /* captures list (TODAY) */
+  .captures-list { background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius); overflow: hidden; }
+  .captures-list.hidden { display: none; }
+  .capture-row {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
+  }
+  .capture-row:last-child { border-bottom: none; }
+  .capture-row-body { flex: 1; min-width: 0; }
+  .capture-row-text {
+    font-size: 13px; line-height: 1.4;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .capture-row-meta {
+    font-size: 11px; color: var(--text-faint); margin-top: 2px;
+  }
+
   /* TOAST — supports plain + action variants */
   .toast {
     position: fixed; bottom: 24px; left: 50%;
@@ -272,7 +353,7 @@
   <h1>motracker</h1>
   <div class="header-right">
     <span class="date" id="date">—</span>
-    <a class="nav" href="./capture.html">capture →</a>
+    <a class="nav" href="./capture.html">captures →</a>
   </div>
 </header>
 
@@ -307,6 +388,16 @@
 <section>
   <div class="section-head"><h2>calories</h2></div>
   <div class="metric" id="caloriesMetric">
+    <div class="loading">loading…</div>
+  </div>
+</section>
+
+<section>
+  <div class="section-head collapsible" id="capturesHead">
+    <h2>recent captures</h2>
+    <span class="count" id="capturesCount"><span class="chevron" id="capturesChevron">▾</span></span>
+  </div>
+  <div class="captures-list hidden" id="capturesList">
     <div class="loading">loading…</div>
   </div>
 </section>
@@ -366,7 +457,12 @@
   let SHOPPING = [];
   let CALORIES_TODAY = 0;
   let SPEND_TODAY = 0;
+  let FOOD_ENTRIES = []; // [{created_at, value, note}]
+  let RECENT_CAPTURES = []; // grouped { entry, routes:[{table, route_label}] }
   let GOALS = { calories: 2500, spend: 10000 };
+
+  let CAPTURES_OPEN = false;
+  let FOOD_OPEN = false;
 
   // ============================================
   // REST HELPERS
@@ -428,15 +524,70 @@
   }
 
   async function loadMetrics() {
-    const url = `metrics?date=eq.${TODAY}&metric_type=in.(calories,spend)&select=metric_type,value`;
+    const url = `metrics?date=eq.${TODAY}&metric_type=in.(calories,spend)&select=metric_type,value,note,created_at&order=created_at.desc`;
     const rows = await sbGet(url);
     CALORIES_TODAY = rows.filter(r => r.metric_type === "calories").reduce((s, r) => s + +r.value, 0);
     SPEND_TODAY    = rows.filter(r => r.metric_type === "spend").reduce((s, r) => s + +r.value, 0);
+    FOOD_ENTRIES   = rows.filter(r => r.metric_type === "calories")
+                         .map(r => ({ created_at: r.created_at, value: +r.value, note: r.note }));
+  }
+
+  // Load today's captures = entries + their routed siblings (by time window)
+  // Strategy: pull today's entries, then for each entry fetch other rows from
+  // every table created within ±2s of it. That lets us label routes.
+  async function loadRecentCaptures() {
+    const todayStart = `${TODAY}T00:00:00`;
+    const todayEnd   = `${TODAY}T23:59:59`;
+    const entries = await sbGet(
+      `entries?created_at=gte.${todayStart}&created_at=lte.${todayEnd}&select=*&order=created_at.desc`
+    );
+    if (entries.length === 0) { RECENT_CAPTURES = []; return; }
+
+    // Pull all rows from siblings in one shot, today only
+    const [tasksRows, shoppingRows, notesRows, remindersRows, metricsRows] = await Promise.all([
+      sbGet(`tasks?created_at=gte.${todayStart}&created_at=lte.${todayEnd}&select=id,created_at,text`),
+      sbGet(`shopping?created_at=gte.${todayStart}&created_at=lte.${todayEnd}&select=id,created_at,item`),
+      sbGet(`notes?created_at=gte.${todayStart}&created_at=lte.${todayEnd}&select=id,created_at,text`),
+      sbGet(`reminders?created_at=gte.${todayStart}&created_at=lte.${todayEnd}&select=id,created_at,text`),
+      sbGet(`metrics?created_at=gte.${todayStart}&created_at=lte.${todayEnd}&select=id,created_at,metric_type,value,note`),
+    ]);
+
+    const MATCH_WINDOW_MS = 3000; // 3 seconds — capture writes happen near-simultaneously
+
+    function siblingsFor(entry) {
+      const t0 = new Date(entry.created_at).getTime();
+      const within = (row) => Math.abs(new Date(row.created_at).getTime() - t0) <= MATCH_WINDOW_MS;
+      const routes = [];
+      if (tasksRows.some(within))     routes.push({ table: 'tasks',    label: 'tasks' });
+      if (shoppingRows.some(within))  routes.push({ table: 'shopping', label: 'shopping' });
+      if (notesRows.some(within))     routes.push({ table: 'notes',    label: 'note' });
+      if (remindersRows.some(within)) routes.push({ table: 'reminders', label: 'reminder' });
+      // metrics — group by metric_type so we show calories/spend/etc. distinctly
+      const matchedMetrics = metricsRows.filter(within);
+      const seenTypes = new Set();
+      matchedMetrics.forEach(m => {
+        if (seenTypes.has(m.metric_type)) return;
+        seenTypes.add(m.metric_type);
+        routes.push({ table: 'metrics', metric_type: m.metric_type, label: m.metric_type });
+      });
+      return routes;
+    }
+
+    RECENT_CAPTURES = entries.map(e => ({
+      entry: e,
+      routes: siblingsFor(e),
+    }));
   }
 
   async function loadAll() {
     try {
-      await Promise.all([loadGoals(), loadTasks(), loadShopping(), loadMetrics()]);
+      await Promise.all([
+        loadGoals(),
+        loadTasks(),
+        loadShopping(),
+        loadMetrics(),
+        loadRecentCaptures(),
+      ]);
       renderAll();
     } catch (e) {
       console.error(e);
@@ -445,6 +596,7 @@
       document.getElementById("shoppingList").innerHTML = "";
       document.getElementById("caloriesMetric").innerHTML = "";
       document.getElementById("spendMetric").innerHTML = "";
+      document.getElementById("capturesList").innerHTML = "";
     }
   }
 
@@ -452,7 +604,7 @@
   // HELPERS
   // ============================================
   function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, c => ({
+    return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({
       "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
     }[c]));
   }
@@ -460,6 +612,11 @@
   function fmtShortDate(iso) {
     const d = new Date(iso + (iso.length === 10 ? 'T00:00:00' : ''));
     return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }).toLowerCase();
+  }
+
+  function fmtTime(iso) {
+    const d = new Date(iso);
+    return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Budapest' });
   }
 
   function fmtDeadline(iso) {
@@ -493,6 +650,14 @@
   function sourcePill(source) {
     const s = SOURCES[source] || SOURCES.manual;
     return `<span class="source source-${escapeHtml(source)}"><span class="source-icon">${s.icon}</span>${escapeHtml(s.label)}</span>`;
+  }
+
+  // Route pill for "recent captures" — distinct vocab from regular tags
+  function routePill(label) {
+    const lcLabel = String(label).toLowerCase();
+    const KNOWN = ['tasks', 'shopping', 'calories', 'spend', 'tobacco', 'note', 'reminder', 'entry', 'multi'];
+    const cls = KNOWN.includes(lcLabel) ? `route-${lcLabel}` : 'route-metric';
+    return `<span class="route ${cls}">${escapeHtml(lcLabel)}</span>`;
   }
 
   function sortItems(items, isTask) {
@@ -580,30 +745,145 @@
     }).join('');
   }
 
-  function renderMetric(elId, current, goal, unit) {
+  function renderCaloriesMetric() {
+    const el = document.getElementById('caloriesMetric');
+    const current = CALORIES_TODAY;
+    const goal = GOALS.calories;
     const pct = goal > 0 ? Math.round((current / goal) * 100) : 0;
     const over = pct > 100;
     const barWidth = Math.min(pct, 100);
-    document.getElementById(elId).innerHTML = `
+
+    let detailHtml = '';
+    if (FOOD_ENTRIES.length > 0) {
+      const count = FOOD_ENTRIES.length;
+      const label = `${count} meal${count === 1 ? '' : 's'} logged`;
+      const bodyClass = FOOD_OPEN ? '' : 'hidden';
+      const chevClass = FOOD_OPEN ? 'open' : '';
+      const foodRows = FOOD_ENTRIES
+        .slice()
+        .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+        .map(f => `
+          <div class="food-entry">
+            <div class="food-entry-head">
+              <span class="food-entry-time">${fmtTime(f.created_at)}</span>
+              <span class="food-entry-kcal">${f.value.toLocaleString()} kcal</span>
+            </div>
+            <div class="food-entry-note">${escapeHtml(f.note || '(no description)')}</div>
+          </div>
+        `).join('');
+      detailHtml = `
+        <div class="metric-detail">
+          <div class="metric-detail-toggle" id="foodToggle">
+            <span class="label">${label}</span>
+            <span class="chevron ${chevClass}" id="foodChevron">▾</span>
+          </div>
+          <div class="metric-detail-body ${bodyClass}" id="foodBody">
+            ${foodRows}
+          </div>
+        </div>
+      `;
+    }
+
+    el.innerHTML = `
       <div class="metric-head">
-        <span class="metric-current">${current.toLocaleString()}<span class="unit">${unit}</span></span>
+        <span class="metric-current">${current.toLocaleString()}<span class="unit">kcal</span></span>
         <span class="metric-pct ${over ? 'over' : ''}">${pct}%</span>
       </div>
       <div class="bar"><div class="bar-fill ${over ? 'over' : ''}" style="width:${barWidth}%"></div></div>
       <div class="metric-foot">
-        <span>goal <span class="goal-value">${goal.toLocaleString()} ${unit}</span></span>
+        <span>goal <span class="goal-value">${goal.toLocaleString()} kcal</span></span>
+        <span class="remaining ${over ? 'over' : ''}">${over ? `+${(current - goal).toLocaleString()} over` : `${(goal - current).toLocaleString()} left`}</span>
+      </div>
+      ${detailHtml}
+    `;
+
+    // Wire up the food expand toggle
+    const toggle = document.getElementById('foodToggle');
+    if (toggle) {
+      toggle.addEventListener('click', () => {
+        FOOD_OPEN = !FOOD_OPEN;
+        document.getElementById('foodBody').classList.toggle('hidden', !FOOD_OPEN);
+        document.getElementById('foodChevron').classList.toggle('open', FOOD_OPEN);
+      });
+    }
+  }
+
+  function renderSpendMetric() {
+    const current = SPEND_TODAY;
+    const goal = GOALS.spend;
+    const pct = goal > 0 ? Math.round((current / goal) * 100) : 0;
+    const over = pct > 100;
+    const barWidth = Math.min(pct, 100);
+    document.getElementById('spendMetric').innerHTML = `
+      <div class="metric-head">
+        <span class="metric-current">${current.toLocaleString()}<span class="unit">HUF</span></span>
+        <span class="metric-pct ${over ? 'over' : ''}">${pct}%</span>
+      </div>
+      <div class="bar"><div class="bar-fill ${over ? 'over' : ''}" style="width:${barWidth}%"></div></div>
+      <div class="metric-foot">
+        <span>goal <span class="goal-value">${goal.toLocaleString()} HUF</span></span>
         <span class="remaining ${over ? 'over' : ''}">${over ? `+${(current - goal).toLocaleString()} over` : `${(goal - current).toLocaleString()} left`}</span>
       </div>
     `;
+  }
+
+  function renderRecentCaptures() {
+    const list = document.getElementById('capturesList');
+    const countEl = document.getElementById('capturesCount');
+    const chevron = document.getElementById('capturesChevron');
+    const n = RECENT_CAPTURES.length;
+
+    if (n === 0) {
+      countEl.innerHTML = `<span style="color: var(--text-faint);">0 today</span> <span class="chevron" id="capturesChevron">▾</span>`;
+      list.classList.add('hidden');
+      list.innerHTML = '';
+      return;
+    }
+    countEl.innerHTML = `${n} today <span class="chevron ${CAPTURES_OPEN ? 'open' : ''}" id="capturesChevron">▾</span>`;
+
+    if (!CAPTURES_OPEN) {
+      list.classList.add('hidden');
+      return;
+    }
+    list.classList.remove('hidden');
+
+    list.innerHTML = RECENT_CAPTURES.map(c => {
+      const time = fmtTime(c.entry.created_at);
+      const labels = c.routes.length === 0
+        ? ['entry']
+        : c.routes.map(r => r.label);
+      const routeStr = labels.join(', ');
+      const pill = labels.length === 1
+        ? routePill(labels[0])
+        : routePill('multi');
+      return `
+        <div class="capture-row">
+          <div class="capture-row-body">
+            <div class="capture-row-text">${escapeHtml(c.entry.raw_text)}</div>
+            <div class="capture-row-meta">${time} · → ${escapeHtml(routeStr)}</div>
+          </div>
+          ${pill}
+        </div>
+      `;
+    }).join('');
   }
 
   function renderAll() {
     document.getElementById('date').textContent = fmtShortDate(TODAY);
     renderTasks();
     renderShopping();
-    renderMetric('caloriesMetric', CALORIES_TODAY, GOALS.calories, 'kcal');
-    renderMetric('spendMetric',    SPEND_TODAY,    GOALS.spend,    'HUF');
+    renderCaloriesMetric();
+    renderRecentCaptures();
+    renderSpendMetric();
   }
+
+  // ============================================
+  // CAPTURES SECTION TOGGLE
+  // ============================================
+  document.getElementById('capturesHead').addEventListener('click', () => {
+    CAPTURES_OPEN = !CAPTURES_OPEN;
+    renderRecentCaptures();
+  });
 
   // ============================================
   // TOAST
