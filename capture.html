@@ -205,7 +205,7 @@ function showToast(msg, isError = false) {
 async function loadRecent() {
   try {
     const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/entries?select=raw_text,captured_at&order=captured_at.desc&limit=5`,
+      `${SUPABASE_URL}/rest/v1/entries?select=raw_text,created_at&order=created_at.desc&limit=5`,
       {
         headers: {
           "apikey": SUPABASE_ANON_KEY,
@@ -218,7 +218,7 @@ async function loadRecent() {
     recentList.innerHTML = rows.map(r => `
       <div class="recent-item">
         ${escapeHtml(r.raw_text)}
-        <div class="time">${formatTime(r.captured_at)}</div>
+        <div class="time">${formatTime(r.created_at)}</div>
       </div>
     `).join("");
   } catch (e) {
