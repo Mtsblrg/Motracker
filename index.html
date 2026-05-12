@@ -21,6 +21,8 @@
     --spend-dim: #ba7517;
     --danger: #f0796e;
     --danger-bg: rgba(240, 121, 110, 0.15);
+    --edit: #85b7eb;
+    --edit-bg: rgba(55, 138, 221, 0.15);
     --radius: 14px;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -41,10 +43,35 @@
     margin-bottom: 18px; padding: 4px 4px 0;
   }
   header h1 { font-size: 20px; font-weight: 600; letter-spacing: -0.5px; color: var(--accent); }
+  header h1.past { color: var(--edit); }
   .header-right { display: flex; align-items: baseline; gap: 14px; }
-  .header-right .date { font-size: 13px; color: var(--text-dim); letter-spacing: 0.3px; }
+  .header-right .date {
+    font-size: 13px; color: var(--text-dim); letter-spacing: 0.3px;
+    cursor: pointer; padding: 2px 6px; border-radius: 6px;
+    border: 1px solid transparent;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .header-right .date:active { background: var(--surface-hover); border-color: var(--border-strong); }
+  .header-right .date.past {
+    color: var(--edit); border-color: rgba(55, 138, 221, 0.3);
+    background: rgba(55, 138, 221, 0.05);
+  }
   .header-right .nav { font-size: 13px; color: var(--text-faint); text-decoration: none; }
   .header-right .nav:hover { color: var(--accent); }
+  .back-today {
+    display: none;
+    margin-bottom: 14px;
+    padding: 8px 12px;
+    background: rgba(55, 138, 221, 0.08);
+    border: 1px solid rgba(55, 138, 221, 0.25);
+    border-radius: 8px;
+    color: var(--edit);
+    font-size: 13px;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .back-today.show { display: block; }
 
   .capture {
     background: var(--surface); border: 1px solid var(--border-strong);
@@ -122,25 +149,24 @@
   .long-pressable.armed { background: var(--danger-bg); }
   .long-pressable.armed:active { background: var(--danger-bg); }
 
-  .delete-confirm-bar { display: flex; align-items: center; gap: 12px; width: 100%; }
-  .delete-confirm-text { flex: 1; font-size: 14px; color: var(--text-dim); }
-  .delete-confirm-delete {
-    background: var(--danger); color: #fff; border: none;
-    padding: 6px 16px; border-radius: 6px; font-size: 13px; font-weight: 600;
+  .action-bar { display: flex; align-items: center; gap: 8px; width: 100%; flex-wrap: wrap; }
+  .action-text { flex: 1; min-width: 100px; font-size: 14px; color: var(--text-dim); }
+  .action-btn {
+    border: none;
+    padding: 6px 14px; border-radius: 6px; font-size: 13px; font-weight: 600;
     cursor: pointer; letter-spacing: 0.3px;
+    font-family: inherit;
   }
-  .delete-confirm-cancel {
+  .action-btn.edit { background: var(--edit); color: #fff; }
+  .action-btn.delete { background: var(--danger); color: #fff; }
+  .action-btn.cancel {
     background: transparent; color: var(--text-dim);
     border: 1px solid var(--border-strong);
-    padding: 6px 14px; border-radius: 6px; font-size: 13px;
-    cursor: pointer;
   }
-  .food-entry .delete-confirm-text,
-  .spend-entry .delete-confirm-text { font-size: 13px; }
-  .food-entry .delete-confirm-delete,
-  .spend-entry .delete-confirm-delete { padding: 5px 12px; font-size: 12px; }
-  .food-entry .delete-confirm-cancel,
-  .spend-entry .delete-confirm-cancel { padding: 5px 10px; font-size: 12px; }
+  .food-entry .action-text,
+  .spend-entry .action-text { font-size: 13px; }
+  .food-entry .action-btn,
+  .spend-entry .action-btn { padding: 5px 10px; font-size: 12px; }
 
   .checkbox {
     width: 20px; height: 20px; border: 1.5px solid var(--text-faint);
@@ -398,18 +424,132 @@
     width: 100%;
     transform-origin: left;
   }
+
+  /* CALENDAR MODAL */
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+    display: none; align-items: center; justify-content: center;
+    z-index: 200; padding: 20px;
+  }
+  .modal-backdrop.show { display: flex; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border-strong);
+    border-radius: var(--radius); padding: 18px;
+    width: 100%; max-width: 360px;
+  }
+  .modal-title {
+    font-size: 14px; font-weight: 600; color: var(--text);
+    margin-bottom: 14px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .modal-close {
+    background: transparent; border: none; color: var(--text-faint);
+    font-size: 18px; cursor: pointer; padding: 4px 8px;
+    line-height: 1;
+  }
+  .cal-nav {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 10px;
+  }
+  .cal-nav-btn {
+    background: transparent; border: 1px solid var(--border-strong);
+    color: var(--text-dim); padding: 4px 10px; border-radius: 6px;
+    cursor: pointer; font-size: 14px;
+  }
+  .cal-nav-btn:active { background: var(--surface-hover); }
+  .cal-month-label {
+    font-size: 14px; font-weight: 600; color: var(--text);
+  }
+  .cal-grid {
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px;
+  }
+  .cal-dow {
+    text-align: center; font-size: 10px; color: var(--text-faint);
+    text-transform: uppercase; letter-spacing: 1px;
+    padding: 6px 0;
+  }
+  .cal-day {
+    text-align: center; padding: 8px 0; font-size: 13px;
+    color: var(--text); cursor: pointer; border-radius: 6px;
+    background: transparent;
+    border: 1px solid transparent;
+    font-family: inherit;
+    font-variant-numeric: tabular-nums;
+  }
+  .cal-day:active { background: var(--surface-hover); }
+  .cal-day.other-month { color: var(--text-faint); opacity: 0.4; }
+  .cal-day.today {
+    color: var(--accent); font-weight: 600;
+    border-color: rgba(196, 240, 96, 0.3);
+  }
+  .cal-day.selected {
+    background: var(--edit); color: #fff; font-weight: 600;
+  }
+  .cal-day.future {
+    color: var(--text-faint); opacity: 0.3; cursor: not-allowed;
+  }
+  .cal-foot {
+    margin-top: 14px; display: flex; justify-content: center;
+  }
+  .cal-foot button {
+    background: transparent; border: 1px solid var(--border-strong);
+    color: var(--text-dim); padding: 6px 14px; border-radius: 8px;
+    cursor: pointer; font-family: inherit; font-size: 13px;
+  }
+  .cal-foot button:active { background: var(--surface-hover); }
+
+  /* EDIT MODAL */
+  .edit-modal { max-width: 380px; }
+  .edit-field { margin-bottom: 12px; }
+  .edit-label {
+    display: block; font-size: 11px; color: var(--text-dim);
+    text-transform: uppercase; letter-spacing: 1.5px;
+    margin-bottom: 6px;
+  }
+  .edit-input, .edit-textarea, .edit-select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    padding: 9px 12px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .edit-input:focus, .edit-textarea:focus, .edit-select:focus {
+    border-color: var(--edit);
+  }
+  .edit-textarea { resize: vertical; min-height: 60px; max-height: 200px; }
+  .edit-actions {
+    display: flex; gap: 8px; justify-content: flex-end;
+    margin-top: 16px;
+  }
+  .edit-actions button {
+    border: none; border-radius: 8px; padding: 8px 16px;
+    font-family: inherit; font-size: 13px; font-weight: 600;
+    cursor: pointer;
+  }
+  .btn-cancel { background: var(--border-strong); color: var(--text); }
+  .btn-save { background: var(--accent); color: var(--bg); }
+  .btn-save:disabled {
+    background: var(--border-strong); color: var(--text-faint); cursor: not-allowed;
+  }
 </style>
 </head>
 <body>
 
 <header>
-  <h1>motracker</h1>
+  <h1 id="title">motracker</h1>
   <div class="header-right">
     <span class="date" id="date">—</span>
     <a class="nav" href="./spend.html">spend →</a>
     <a class="nav" href="./capture.html">captures →</a>
   </div>
 </header>
+
+<a class="back-today" id="backToday" href="./">← back to today</a>
 
 <div class="capture" id="capture">
   <textarea id="captureInput" rows="1" placeholder="capture anything..."></textarea>
@@ -465,26 +605,52 @@
 
 <div class="toast" id="toast"></div>
 
+<div class="modal-backdrop" id="calBackdrop">
+  <div class="modal">
+    <div class="modal-title">
+      <span>pick a day</span>
+      <button class="modal-close" id="calClose">✕</button>
+    </div>
+    <div class="cal-nav">
+      <button class="cal-nav-btn" id="calPrev">‹</button>
+      <span class="cal-month-label" id="calMonthLabel">—</span>
+      <button class="cal-nav-btn" id="calNext">›</button>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+    <div class="cal-foot">
+      <button id="calToday">jump to today</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="editBackdrop">
+  <div class="modal edit-modal">
+    <div class="modal-title">
+      <span id="editTitle">edit</span>
+      <button class="modal-close" id="editClose">✕</button>
+    </div>
+    <div id="editFields"></div>
+    <div class="edit-actions">
+      <button class="btn-cancel" id="editCancel">cancel</button>
+      <button class="btn-save" id="editSave">save</button>
+    </div>
+  </div>
+</div>
+
 <script>
-  // ============================================
-  // CONFIG
-  // ============================================
   const SUPABASE_URL = "https://fwqhomgawlgicqiqqqhw.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ3cWhvbWdhd2xnaWNxaXFxcWh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyMTE1NDYsImV4cCI6MjA5Mjc4NzU0Nn0.LF82rWM0rX5FKY0Qo5Vsym_VWgV2reL_U8LkHbfWVHI";
   const CAPTURE_FN_URL = `${SUPABASE_URL}/functions/v1/capture`;
   const REST = `${SUPABASE_URL}/rest/v1`;
-
   const HEADERS = {
     "apikey": SUPABASE_ANON_KEY,
     "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
     "Content-Type": "application/json",
   };
-
   const TAG_CLASSES = {
     work: 'tag-work', mhc: 'tag-mhc', health: 'tag-health', finance: 'tag-finance',
     urgent: 'tag-urgent', personal: 'tag-personal', growth: 'tag-growth', fusi: 'tag-fusi',
   };
-
   const SOURCES = {
     capture: { icon: '✎', label: 'capture' },
     gcal:    { icon: '◰', label: 'gcal'    },
@@ -495,77 +661,81 @@
     revolut: { icon: '€', label: 'revolut' },
     erste:   { icon: '€', label: 'erste'   },
   };
-
   const LONG_PRESS_MS = 500;
   const UNDO_TIMEOUT_MS = 5000;
 
   function todayISO() {
-    // Use Intl for DST-safe Budapest local date
     const fmt = new Intl.DateTimeFormat('en-CA', {
       timeZone: 'Europe/Budapest',
       year: 'numeric', month: '2-digit', day: '2-digit',
     });
     return fmt.format(new Date());
   }
-  const TODAY = todayISO();
 
-  // ============================================
-  // STATE
-  // ============================================
+  const TODAY = todayISO();
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlDate = urlParams.get('date');
+  const VIEW_DATE = (urlDate && /^\d{4}-\d{2}-\d{2}$/.test(urlDate) && urlDate <= TODAY)
+    ? urlDate : TODAY;
+  const IS_PAST = VIEW_DATE !== TODAY;
+
   let TASKS = [];
   let SHOPPING = [];
-  let CALORIES_TODAY = 0;
-  let SPEND_TODAY = 0;
-  let FOOD_ENTRIES = []; // [{id, created_at, value, note}]
-  let SPEND_ENTRIES = []; // [{id, created_at, value, note(merchant), source}]
-  let RECENT_CAPTURES = []; // grouped { entry, routes:[{table, route_label}] }
+  let CALORIES_VIEW = 0;
+  let SPEND_VIEW = 0;
+  let FOOD_ENTRIES = [];
+  let SPEND_ENTRIES = [];
+  let RECENT_CAPTURES = [];
   let GOALS = { calories: 2500, spend: 10000 };
-
   let CAPTURES_OPEN = false;
   let FOOD_OPEN = false;
   let SPEND_OPEN = false;
 
-  // ============================================
-  // DELETABLE REGISTRY
-  // ============================================
   const DELETABLES = {
     tasks: {
       array: () => TASKS,
       render: () => renderTasks(),
       label:  row => row.text,
+      canEdit: () => true,
+      editFields: ['text', 'deadline', 'tags', 'done'],
     },
     shopping: {
       array: () => SHOPPING,
       render: () => renderShopping(),
       label:  row => row.item,
+      canEdit: () => true,
+      editFields: ['item', 'tags', 'done'],
     },
     metrics_calories: {
       table: 'metrics',
       array: () => FOOD_ENTRIES,
       render: () => renderCaloriesMetric(),
       label:  row => row.note || '(no description)',
-      afterRemove:  row => { CALORIES_TODAY -= +row.value; },
-      afterRestore: row => { CALORIES_TODAY += +row.value; },
+      afterRemove:  row => { CALORIES_VIEW -= +row.value; },
+      afterRestore: row => { CALORIES_VIEW += +row.value; },
+      canEdit: () => true,
+      editFields: ['note', 'value_kcal'],
     },
     metrics_spend: {
       table: 'metrics',
       array: () => SPEND_ENTRIES,
       render: () => renderSpendMetric(),
       label:  row => row.note || '(no merchant)',
-      afterRemove:  row => { SPEND_TODAY -= +row.value; },
-      afterRestore: row => { SPEND_TODAY += +row.value; },
+      afterRemove:  row => { SPEND_VIEW -= +row.value; },
+      afterRestore: row => { SPEND_VIEW += +row.value; },
+      canEdit: (row) => {
+        const src = (row.source || '').toLowerCase();
+        return src !== 'revolut' && src !== 'erste';
+      },
+      editFields: ['note', 'value_huf'],
     },
   };
 
-  // ============================================
-  // REST HELPERS
-  // ============================================
   async function sbGet(path) {
     const res = await fetch(`${REST}/${path}`, { headers: HEADERS });
     if (!res.ok) throw new Error(`GET ${path}: ${res.status}`);
     return res.json();
   }
-
   async function sbPatch(path, body) {
     const res = await fetch(`${REST}/${path}`, {
       method: "PATCH",
@@ -578,12 +748,8 @@
     }
     return res.json();
   }
-
   async function sbDelete(path) {
-    const res = await fetch(`${REST}/${path}`, {
-      method: "DELETE",
-      headers: HEADERS,
-    });
+    const res = await fetch(`${REST}/${path}`, { method: "DELETE", headers: HEADERS });
     if (!res.ok) {
       const t = await res.text();
       throw new Error(`DELETE ${path}: ${res.status} ${t}`);
@@ -591,9 +757,6 @@
     return true;
   }
 
-  // ============================================
-  // FETCH
-  // ============================================
   async function loadGoals() {
     try {
       const rows = await sbGet(`settings?key=in.(daily_calorie_target,daily_spend_target_huf)`);
@@ -601,43 +764,49 @@
         if (r.key === "daily_calorie_target")     GOALS.calories = +r.value;
         if (r.key === "daily_spend_target_huf")   GOALS.spend    = +r.value;
       });
-    } catch (e) {
-      console.warn("Failed to load goals, using defaults:", e);
-    }
+    } catch (e) { console.warn("Failed to load goals, using defaults:", e); }
   }
 
   async function loadTasks() {
-    const url = `tasks?or=(done.eq.false,and(done.eq.true,done_at.gte.${TODAY}T00:00:00))&select=*&order=created_at.desc`;
+    let url;
+    if (IS_PAST) {
+      url = `tasks?and=(done.eq.true,done_at.gte.${VIEW_DATE}T00:00:00,done_at.lte.${VIEW_DATE}T23:59:59)&select=*&order=done_at.desc`;
+    } else {
+      url = `tasks?or=(done.eq.false,and(done.eq.true,done_at.gte.${VIEW_DATE}T00:00:00))&select=*&order=created_at.desc`;
+    }
     TASKS = await sbGet(url);
   }
 
   async function loadShopping() {
-    const url = `shopping?or=(done.eq.false,and(done.eq.true,done_at.gte.${TODAY}T00:00:00))&select=*&order=created_at.desc`;
+    let url;
+    if (IS_PAST) {
+      url = `shopping?and=(done.eq.true,done_at.gte.${VIEW_DATE}T00:00:00,done_at.lte.${VIEW_DATE}T23:59:59)&select=*&order=done_at.desc`;
+    } else {
+      url = `shopping?or=(done.eq.false,and(done.eq.true,done_at.gte.${VIEW_DATE}T00:00:00))&select=*&order=created_at.desc`;
+    }
     SHOPPING = await sbGet(url);
   }
 
   async function loadMetrics() {
-    const url = `metrics?date=eq.${TODAY}&metric_type=in.(calories,spend)&select=id,metric_type,value,note,source,created_at&order=created_at.desc`;
+    const url = `metrics?date=eq.${VIEW_DATE}&metric_type=in.(calories,spend)&select=id,metric_type,value,note,source,created_at&order=created_at.desc`;
     const rows = await sbGet(url);
-    CALORIES_TODAY = rows.filter(r => r.metric_type === "calories").reduce((s, r) => s + +r.value, 0);
-    SPEND_TODAY    = rows.filter(r => r.metric_type === "spend").reduce((s, r) => s + +r.value, 0);
-    FOOD_ENTRIES   = rows.filter(r => r.metric_type === "calories")
-                         .map(r => ({ id: r.id, created_at: r.created_at, value: +r.value, note: r.note }));
-    SPEND_ENTRIES  = rows.filter(r => r.metric_type === "spend")
-                         .map(r => ({ id: r.id, created_at: r.created_at, value: +r.value, note: r.note, source: r.source }));
+    CALORIES_VIEW = rows.filter(r => r.metric_type === "calories").reduce((s, r) => s + +r.value, 0);
+    SPEND_VIEW    = rows.filter(r => r.metric_type === "spend").reduce((s, r) => s + +r.value, 0);
+    FOOD_ENTRIES  = rows.filter(r => r.metric_type === "calories")
+                        .map(r => ({ id: r.id, created_at: r.created_at, value: +r.value, note: r.note }));
+    SPEND_ENTRIES = rows.filter(r => r.metric_type === "spend")
+                        .map(r => ({ id: r.id, created_at: r.created_at, value: +r.value, note: r.note, source: r.source }));
   }
 
   async function loadRecentCaptures() {
-    const todayStart = `${TODAY}T00:00:00`;
-    const todayEnd   = `${TODAY}T23:59:59`;
+    const dayStart = `${VIEW_DATE}T00:00:00`;
+    const dayEnd   = `${VIEW_DATE}T23:59:59`;
     const entries = await sbGet(
-      `entries?created_at=gte.${todayStart}&created_at=lte.${todayEnd}&select=*&order=created_at.desc`
+      `entries?created_at=gte.${dayStart}&created_at=lte.${dayEnd}&select=*&order=created_at.desc`
     );
     if (entries.length === 0) { RECENT_CAPTURES = []; return; }
-
     const entryIds = entries.map(e => e.id);
     const idFilter = `entry_id=in.(${entryIds.join(',')})`;
-
     const [tasksRows, shoppingRows, notesRows, remindersRows, metricsRows] = await Promise.all([
       sbGet(`tasks?${idFilter}&select=entry_id`),
       sbGet(`shopping?${idFilter}&select=entry_id`),
@@ -645,7 +814,6 @@
       sbGet(`reminders?${idFilter}&select=entry_id`),
       sbGet(`metrics?${idFilter}&select=entry_id,metric_type`),
     ]);
-
     const routesByEntry = new Map();
     function add(entryId, label) {
       if (!routesByEntry.has(entryId)) routesByEntry.set(entryId, new Set());
@@ -656,25 +824,15 @@
     notesRows.forEach(r => add(r.entry_id, 'note'));
     remindersRows.forEach(r => add(r.entry_id, 'reminder'));
     metricsRows.forEach(r => add(r.entry_id, r.metric_type));
-
     RECENT_CAPTURES = entries.map(e => {
       const labels = routesByEntry.has(e.id) ? Array.from(routesByEntry.get(e.id)) : [];
-      return {
-        entry: e,
-        routes: labels.map(label => ({ label })),
-      };
+      return { entry: e, routes: labels.map(label => ({ label })) };
     });
   }
 
   async function loadAll() {
     try {
-      await Promise.all([
-        loadGoals(),
-        loadTasks(),
-        loadShopping(),
-        loadMetrics(),
-        loadRecentCaptures(),
-      ]);
+      await Promise.all([loadGoals(), loadTasks(), loadShopping(), loadMetrics(), loadRecentCaptures()]);
       renderAll();
     } catch (e) {
       console.error(e);
@@ -687,25 +845,23 @@
     }
   }
 
-  // ============================================
-  // HELPERS
-  // ============================================
   function escapeHtml(s) {
     return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({
       "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
     }[c]));
   }
-
   function fmtShortDate(iso) {
     const d = new Date(iso + (iso.length === 10 ? 'T00:00:00' : ''));
     return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }).toLowerCase();
   }
-
+  function fmtLongDate(iso) {
+    const d = new Date(iso + 'T00:00:00');
+    return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }).toLowerCase();
+  }
   function fmtTime(iso) {
     const d = new Date(iso);
     return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Budapest' });
   }
-
   function fmtDeadline(iso) {
     if (!iso) return null;
     const today = new Date(TODAY + 'T00:00:00');
@@ -718,44 +874,39 @@
     if (diff < 7)  return { text: `in ${diff}d (${date})`, overdue: false };
     return { text: date, overdue: false };
   }
-
   function ageLabel(createdAt) {
-    const today = new Date(TODAY + 'T00:00:00');
+    const ref = new Date(VIEW_DATE + 'T00:00:00');
     const c = new Date(createdAt);
     const cDateOnly = new Date(c.getFullYear(), c.getMonth(), c.getDate());
-    const diff = Math.round((today - cDateOnly) / 86400000);
+    const diff = Math.round((ref - cDateOnly) / 86400000);
     if (diff <= 0) return null;
     if (diff === 1) return "captured yesterday";
     return `captured ${diff}d ago`;
   }
-
   function tagPill(tag) {
     const cls = TAG_CLASSES[String(tag).toLowerCase()] || 'tag-default';
     return `<span class="tag ${cls}">${escapeHtml(tag)}</span>`;
   }
-
   function sourcePill(source) {
     const s = SOURCES[source] || SOURCES.manual;
     return `<span class="source source-${escapeHtml(source)}"><span class="source-icon">${s.icon}</span>${escapeHtml(s.label)}</span>`;
   }
-
   function routePill(label) {
     const lcLabel = String(label).toLowerCase();
     const KNOWN = ['tasks', 'shopping', 'calories', 'spend', 'tobacco', 'note', 'reminder', 'entry', 'multi'];
     const cls = KNOWN.includes(lcLabel) ? `route-${lcLabel}` : 'route-metric';
     return `<span class="route ${cls}">${escapeHtml(lcLabel)}</span>`;
   }
-
   function sortItems(items, isTask) {
-    const today = TODAY;
+    const ref = VIEW_DATE;
     function bucket(t) {
       if (t.done) return 4;
       if (isTask && t.deadline) {
-        if (t.deadline <= today) return 1;
+        if (t.deadline <= ref) return 1;
         return 2;
       }
       const created = (t.created_at || '').slice(0, 10);
-      if (created === today) return 3;
+      if (created === ref) return 3;
       return 5;
     }
     return [...items].sort((a, b) => {
@@ -767,25 +918,25 @@
     });
   }
 
-  // ============================================
-  // RENDER
-  // ============================================
   function renderTasks() {
     const list = document.getElementById('tasksList');
     const items = sortItems(TASKS, true);
     const open = TASKS.filter(t => !t.done).length;
-    document.getElementById('tasksCount').textContent = open === 0 ? 'all done' : `${open} open`;
+    const countEl = document.getElementById('tasksCount');
+    if (IS_PAST) countEl.textContent = `${TASKS.length} completed`;
+    else countEl.textContent = open === 0 ? 'all done' : `${open} open`;
 
     if (items.length === 0) {
-      list.innerHTML = '<div class="empty">nothing for today</div>';
+      list.innerHTML = IS_PAST
+        ? '<div class="empty">nothing completed on this day</div>'
+        : '<div class="empty">nothing for today</div>';
       return;
     }
     list.innerHTML = items.map(t => {
       const meta = [];
       const dl = fmtDeadline(t.deadline);
-      if (dl) {
-        meta.push(`<span class="deadline${dl.overdue ? ' overdue' : ''}">${escapeHtml(dl.text)}</span>`);
-      } else if (!t.done) {
+      if (dl) meta.push(`<span class="deadline${dl.overdue ? ' overdue' : ''}">${escapeHtml(dl.text)}</span>`);
+      else if (!t.done) {
         const age = ageLabel(t.created_at);
         if (age) meta.push(`<span class="age">${age}</span>`);
       }
@@ -806,10 +957,14 @@
     const list = document.getElementById('shoppingList');
     const items = sortItems(SHOPPING, false);
     const open = SHOPPING.filter(s => !s.done).length;
-    document.getElementById('shoppingCount').textContent = open === 0 ? 'empty' : `${open} items`;
+    const countEl = document.getElementById('shoppingCount');
+    if (IS_PAST) countEl.textContent = `${SHOPPING.length} purchased`;
+    else countEl.textContent = open === 0 ? 'empty' : `${open} items`;
 
     if (items.length === 0) {
-      list.innerHTML = '<div class="empty">list is empty</div>';
+      list.innerHTML = IS_PAST
+        ? '<div class="empty">nothing purchased on this day</div>'
+        : '<div class="empty">list is empty</div>';
       return;
     }
     list.innerHTML = items.map(s => {
@@ -833,20 +988,18 @@
 
   function renderCaloriesMetric() {
     const el = document.getElementById('caloriesMetric');
-    const current = CALORIES_TODAY;
+    const current = CALORIES_VIEW;
     const goal = GOALS.calories;
     const pct = goal > 0 ? Math.round((current / goal) * 100) : 0;
     const over = pct > 100;
     const barWidth = Math.min(pct, 100);
-
     let detailHtml = '';
     if (FOOD_ENTRIES.length > 0) {
       const count = FOOD_ENTRIES.length;
       const label = `${count} meal${count === 1 ? '' : 's'} logged`;
       const bodyClass = FOOD_OPEN ? '' : 'hidden';
       const chevClass = FOOD_OPEN ? 'open' : '';
-      const foodRows = FOOD_ENTRIES
-        .slice()
+      const foodRows = FOOD_ENTRIES.slice()
         .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
         .map(f => `
           <div class="food-entry long-pressable" data-type="metrics_calories" data-id="${f.id}">
@@ -855,21 +1008,16 @@
               <span class="food-entry-kcal">${f.value.toLocaleString()} kcal</span>
             </div>
             <div class="food-entry-note">${escapeHtml(f.note || '(no description)')}</div>
-          </div>
-        `).join('');
+          </div>`).join('');
       detailHtml = `
         <div class="metric-detail">
           <div class="metric-detail-toggle" id="foodToggle">
             <span class="label">${label}</span>
             <span class="chevron ${chevClass}" id="foodChevron">▾</span>
           </div>
-          <div class="metric-detail-body ${bodyClass}" id="foodBody">
-            ${foodRows}
-          </div>
-        </div>
-      `;
+          <div class="metric-detail-body ${bodyClass}" id="foodBody">${foodRows}</div>
+        </div>`;
     }
-
     el.innerHTML = `
       <div class="metric-head">
         <span class="metric-current">${current.toLocaleString()}<span class="unit">kcal</span></span>
@@ -880,9 +1028,7 @@
         <span>goal <span class="goal-value">${goal.toLocaleString()} kcal</span></span>
         <span class="remaining ${over ? 'over' : ''}">${over ? `+${(current - goal).toLocaleString()} over` : `${(goal - current).toLocaleString()} left`}</span>
       </div>
-      ${detailHtml}
-    `;
-
+      ${detailHtml}`;
     const toggle = document.getElementById('foodToggle');
     if (toggle) {
       toggle.addEventListener('click', () => {
@@ -895,20 +1041,18 @@
 
   function renderSpendMetric() {
     const el = document.getElementById('spendMetric');
-    const current = SPEND_TODAY;
+    const current = SPEND_VIEW;
     const goal = GOALS.spend;
     const pct = goal > 0 ? Math.round((current / goal) * 100) : 0;
     const over = pct > 100;
     const barWidth = Math.min(pct, 100);
-
     let detailHtml = '';
     if (SPEND_ENTRIES.length > 0) {
       const count = SPEND_ENTRIES.length;
       const label = `${count} transaction${count === 1 ? '' : 's'}`;
       const bodyClass = SPEND_OPEN ? '' : 'hidden';
       const chevClass = SPEND_OPEN ? 'open' : '';
-      const spendRows = SPEND_ENTRIES
-        .slice()
+      const spendRows = SPEND_ENTRIES.slice()
         .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
         .map(s => {
           const src = (s.source || '').toLowerCase();
@@ -921,8 +1065,7 @@
               <span class="spend-entry-amount">${s.value.toLocaleString()} HUF</span>
             </div>
             <div class="spend-entry-merchant">${escapeHtml(s.note || '(no merchant)')}<span class="spend-entry-source ${srcCls}">${escapeHtml(srcLabel)}</span></div>
-          </div>
-        `;
+          </div>`;
         }).join('');
       detailHtml = `
         <div class="metric-detail">
@@ -930,13 +1073,9 @@
             <span class="label">${label}</span>
             <span class="chevron ${chevClass}" id="spendChevron">▾</span>
           </div>
-          <div class="metric-detail-body ${bodyClass}" id="spendBody">
-            ${spendRows}
-          </div>
-        </div>
-      `;
+          <div class="metric-detail-body ${bodyClass}" id="spendBody">${spendRows}</div>
+        </div>`;
     }
-
     el.innerHTML = `
       <div class="metric-head">
         <span class="metric-current">${current.toLocaleString()}<span class="unit">HUF</span></span>
@@ -947,9 +1086,7 @@
         <span>goal <span class="goal-value">${goal.toLocaleString()} HUF</span></span>
         <span class="remaining ${over ? 'over' : 'spend-color'}">${over ? `+${(current - goal).toLocaleString()} over` : `${(goal - current).toLocaleString()} left`}</span>
       </div>
-      ${detailHtml}
-    `;
-
+      ${detailHtml}`;
     const toggle = document.getElementById('spendToggle');
     if (toggle) {
       toggle.addEventListener('click', () => {
@@ -964,30 +1101,21 @@
     const list = document.getElementById('capturesList');
     const countEl = document.getElementById('capturesCount');
     const n = RECENT_CAPTURES.length;
-
+    const dayLabel = IS_PAST ? 'on this day' : 'today';
     if (n === 0) {
-      countEl.innerHTML = `<span style="color: var(--text-faint);">0 today</span> <span class="chevron" id="capturesChevron">▾</span>`;
+      countEl.innerHTML = `<span style="color: var(--text-faint);">0 ${dayLabel}</span> <span class="chevron" id="capturesChevron">▾</span>`;
       list.classList.add('hidden');
       list.innerHTML = '';
       return;
     }
-    countEl.innerHTML = `${n} today <span class="chevron ${CAPTURES_OPEN ? 'open' : ''}" id="capturesChevron">▾</span>`;
-
-    if (!CAPTURES_OPEN) {
-      list.classList.add('hidden');
-      return;
-    }
+    countEl.innerHTML = `${n} ${dayLabel} <span class="chevron ${CAPTURES_OPEN ? 'open' : ''}" id="capturesChevron">▾</span>`;
+    if (!CAPTURES_OPEN) { list.classList.add('hidden'); return; }
     list.classList.remove('hidden');
-
     list.innerHTML = RECENT_CAPTURES.map(c => {
       const time = fmtTime(c.entry.created_at);
-      const labels = c.routes.length === 0
-        ? ['entry']
-        : c.routes.map(r => r.label);
+      const labels = c.routes.length === 0 ? ['entry'] : c.routes.map(r => r.label);
       const routeStr = labels.join(', ');
-      const pill = labels.length === 1
-        ? routePill(labels[0])
-        : routePill('multi');
+      const pill = labels.length === 1 ? routePill(labels[0]) : routePill('multi');
       return `
         <div class="capture-row">
           <div class="capture-row-body">
@@ -995,13 +1123,29 @@
             <div class="capture-row-meta">${time} · → ${escapeHtml(routeStr)}</div>
           </div>
           ${pill}
-        </div>
-      `;
+        </div>`;
     }).join('');
   }
 
+  function renderHeader() {
+    const dateEl = document.getElementById('date');
+    const titleEl = document.getElementById('title');
+    const backEl = document.getElementById('backToday');
+    if (IS_PAST) {
+      dateEl.textContent = fmtLongDate(VIEW_DATE);
+      dateEl.classList.add('past');
+      titleEl.classList.add('past');
+      backEl.classList.add('show');
+    } else {
+      dateEl.textContent = fmtShortDate(TODAY);
+      dateEl.classList.remove('past');
+      titleEl.classList.remove('past');
+      backEl.classList.remove('show');
+    }
+  }
+
   function renderAll() {
-    document.getElementById('date').textContent = fmtShortDate(TODAY);
+    renderHeader();
     renderTasks();
     renderShopping();
     renderCaloriesMetric();
@@ -1009,29 +1153,21 @@
     renderSpendMetric();
   }
 
-  // ============================================
-  // CAPTURES SECTION TOGGLE
-  // ============================================
   document.getElementById('capturesHead').addEventListener('click', () => {
     CAPTURES_OPEN = !CAPTURES_OPEN;
     renderRecentCaptures();
   });
 
-  // ============================================
-  // TOAST
-  // ============================================
   function showToast(msg, opts = {}) {
     const t = document.getElementById('toast');
     t.className = 'toast';
     if (opts.error)  t.classList.add('error');
     if (opts.action) t.classList.add('action');
-
     if (opts.action) {
       t.innerHTML = `
         <span class="toast-msg">${escapeHtml(msg)}</span>
         <button class="toast-action">${escapeHtml(opts.actionLabel || 'undo')}</button>
-        <div class="toast-progress"></div>
-      `;
+        <div class="toast-progress"></div>`;
       t.querySelector('.toast-action').addEventListener('click', () => {
         if (opts.onAction) opts.onAction();
         hideToast();
@@ -1041,10 +1177,7 @@
         prog.style.transition = `transform ${opts.duration || UNDO_TIMEOUT_MS}ms linear`;
         prog.style.transform = 'scaleX(0)';
       });
-    } else {
-      t.textContent = msg;
-    }
-
+    } else t.textContent = msg;
     t.classList.add('show');
     if (window._toastTimer) clearTimeout(window._toastTimer);
     window._toastTimer = setTimeout(() => {
@@ -1052,18 +1185,13 @@
       if (opts.onTimeout) opts.onTimeout();
     }, opts.duration || 2400);
   }
-
   function hideToast() {
     const t = document.getElementById('toast');
     t.classList.remove('show');
     if (window._toastTimer) { clearTimeout(window._toastTimer); window._toastTimer = null; }
   }
 
-  // ============================================
-  // PENDING DELETE — one at a time
-  // ============================================
   let PENDING_DELETE = null;
-
   function commitPendingDelete() {
     if (!PENDING_DELETE) return;
     const p = PENDING_DELETE;
@@ -1079,32 +1207,25 @@
       loadAll();
     });
   }
-
   function startDelete(type, id) {
     if (PENDING_DELETE) commitPendingDelete();
-
     const spec = DELETABLES[type];
     if (!spec) { console.warn('unknown deletable type:', type); return; }
     const arr = spec.array();
     const idx = arr.findIndex(r => r.id === id);
     if (idx === -1) return;
     const row = arr[idx];
-
     arr.splice(idx, 1);
     if (spec.afterRemove) spec.afterRemove(row);
     spec.render();
-
     PENDING_DELETE = {
       type, row, originalIndex: idx, committed: false,
       timer: setTimeout(() => commitPendingDelete(), UNDO_TIMEOUT_MS),
     };
-
     const rawLabel = spec.label(row);
     const truncated = rawLabel.length > 32 ? rawLabel.slice(0, 32) + '…' : rawLabel;
     showToast(`deleted "${truncated}"`, {
-      action: true,
-      actionLabel: 'UNDO',
-      duration: UNDO_TIMEOUT_MS,
+      action: true, actionLabel: 'UNDO', duration: UNDO_TIMEOUT_MS,
       onAction: () => {
         const p = PENDING_DELETE;
         if (!p || p.committed) return;
@@ -1119,18 +1240,211 @@
     });
   }
 
-  // ============================================
-  // INTERACTIONS — click (toggle done) + long-press (delete)
-  // ============================================
+  let EDIT_CTX = null;
+  function openEditModal(type, id) {
+    const spec = DELETABLES[type];
+    if (!spec) return;
+    const arr = spec.array();
+    const row = arr.find(r => r.id === id);
+    if (!row) return;
+    if (!spec.canEdit(row)) return;
+    EDIT_CTX = { type, id, row, originalRow: { ...row } };
+    const titleMap = {
+      tasks: 'edit task', shopping: 'edit shopping item',
+      metrics_calories: 'edit meal', metrics_spend: 'edit spend',
+    };
+    document.getElementById('editTitle').textContent = titleMap[type] || 'edit';
+    document.getElementById('editFields').innerHTML = buildEditFields(type, row);
+    document.getElementById('editBackdrop').classList.add('show');
+  }
+  function buildEditFields(type, row) {
+    const fields = DELETABLES[type].editFields;
+    return fields.map(f => {
+      switch (f) {
+        case 'text':
+          return `<div class="edit-field"><label class="edit-label">text</label>
+            <textarea class="edit-textarea" id="f_text">${escapeHtml(row.text || '')}</textarea></div>`;
+        case 'item':
+          return `<div class="edit-field"><label class="edit-label">item</label>
+            <input type="text" class="edit-input" id="f_item" value="${escapeHtml(row.item || '')}" /></div>`;
+        case 'note':
+          return `<div class="edit-field"><label class="edit-label">${type === 'metrics_spend' ? 'merchant' : 'description'}</label>
+            <input type="text" class="edit-input" id="f_note" value="${escapeHtml(row.note || '')}" /></div>`;
+        case 'value_kcal':
+          return `<div class="edit-field"><label class="edit-label">calories</label>
+            <input type="number" class="edit-input" id="f_value" value="${row.value || 0}" min="0" step="1" /></div>`;
+        case 'value_huf':
+          return `<div class="edit-field"><label class="edit-label">amount (HUF)</label>
+            <input type="number" class="edit-input" id="f_value" value="${row.value || 0}" min="0" step="1" /></div>`;
+        case 'deadline':
+          return `<div class="edit-field"><label class="edit-label">deadline (optional)</label>
+            <input type="date" class="edit-input" id="f_deadline" value="${row.deadline || ''}" /></div>`;
+        case 'tags':
+          return `<div class="edit-field"><label class="edit-label">tags (comma-separated)</label>
+            <input type="text" class="edit-input" id="f_tags" value="${escapeHtml((row.tags || []).join(', '))}" placeholder="work, urgent, mhc" /></div>`;
+        case 'done':
+          return `<div class="edit-field"><label class="edit-label">status</label>
+            <select class="edit-select" id="f_done">
+              <option value="false" ${!row.done ? 'selected' : ''}>open</option>
+              <option value="true" ${row.done ? 'selected' : ''}>${type === 'shopping' ? 'purchased' : 'done'}</option>
+            </select></div>`;
+        default: return '';
+      }
+    }).join('');
+  }
+  function closeEditModal() {
+    EDIT_CTX = null;
+    document.getElementById('editBackdrop').classList.remove('show');
+    document.getElementById('editSave').disabled = false;
+    document.getElementById('editSave').textContent = 'save';
+  }
+  async function saveEdit() {
+    if (!EDIT_CTX) return;
+    const { type, id, row, originalRow } = EDIT_CTX;
+    const spec = DELETABLES[type];
+    const tbl = spec.table || type;
+    const fields = spec.editFields;
+    const patch = {};
+    for (const f of fields) {
+      switch (f) {
+        case 'text': {
+          const v = document.getElementById('f_text').value.trim();
+          if (!v) { showToast('✕ text required', { error: true }); return; }
+          patch.text = v; break;
+        }
+        case 'item': {
+          const v = document.getElementById('f_item').value.trim();
+          if (!v) { showToast('✕ item required', { error: true }); return; }
+          patch.item = v; break;
+        }
+        case 'note':
+          patch.note = document.getElementById('f_note').value.trim() || null; break;
+        case 'value_kcal':
+        case 'value_huf': {
+          const v = +document.getElementById('f_value').value;
+          if (isNaN(v) || v < 0) { showToast('✕ invalid amount', { error: true }); return; }
+          patch.value = v; break;
+        }
+        case 'deadline': {
+          const v = document.getElementById('f_deadline').value;
+          patch.deadline = v || null; break;
+        }
+        case 'tags': {
+          const raw = document.getElementById('f_tags').value;
+          patch.tags = raw.split(',').map(t => t.trim()).filter(Boolean); break;
+        }
+        case 'done': {
+          const v = document.getElementById('f_done').value === 'true';
+          patch.done = v;
+          if (v && !row.done) patch.done_at = new Date().toISOString();
+          else if (!v && row.done) patch.done_at = null;
+          break;
+        }
+      }
+    }
+    Object.assign(row, patch);
+    if (type === 'metrics_calories') CALORIES_VIEW = FOOD_ENTRIES.reduce((s, r) => s + +r.value, 0);
+    else if (type === 'metrics_spend') SPEND_VIEW = SPEND_ENTRIES.reduce((s, r) => s + +r.value, 0);
+    spec.render();
+    const saveBtn = document.getElementById('editSave');
+    saveBtn.disabled = true;
+    saveBtn.textContent = '…';
+    try {
+      await sbPatch(`${tbl}?id=eq.${id}`, patch);
+      closeEditModal();
+      showToast('✓ saved');
+    } catch (e) {
+      Object.assign(row, originalRow);
+      if (type === 'metrics_calories') CALORIES_VIEW = FOOD_ENTRIES.reduce((s, r) => s + +r.value, 0);
+      else if (type === 'metrics_spend') SPEND_VIEW = SPEND_ENTRIES.reduce((s, r) => s + +r.value, 0);
+      spec.render();
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'save';
+      showToast(`✕ save failed: ${e.message}`, { error: true });
+    }
+  }
+  document.getElementById('editClose').addEventListener('click', closeEditModal);
+  document.getElementById('editCancel').addEventListener('click', closeEditModal);
+  document.getElementById('editSave').addEventListener('click', saveEdit);
+  document.getElementById('editBackdrop').addEventListener('click', e => {
+    if (e.target.id === 'editBackdrop') closeEditModal();
+  });
+
+  let CAL_MONTH = null;
+  const DOW_LABELS = ['mo','tu','we','th','fr','sa','su'];
+  function openCalendar() {
+    const [y, m] = VIEW_DATE.split('-').map(Number);
+    CAL_MONTH = { year: y, month: m - 1 };
+    renderCalendar();
+    document.getElementById('calBackdrop').classList.add('show');
+  }
+  function closeCalendar() {
+    document.getElementById('calBackdrop').classList.remove('show');
+  }
+  function renderCalendar() {
+    const { year, month } = CAL_MONTH;
+    const monthName = new Date(year, month, 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }).toLowerCase();
+    document.getElementById('calMonthLabel').textContent = monthName;
+    const grid = document.getElementById('calGrid');
+    let html = DOW_LABELS.map(d => `<div class="cal-dow">${d}</div>`).join('');
+    const firstDay = new Date(year, month, 1);
+    let startOffset = firstDay.getDay() - 1;
+    if (startOffset < 0) startOffset = 6;
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const daysInPrev = new Date(year, month, 0).getDate();
+    for (let i = startOffset - 1; i >= 0; i--) {
+      const d = daysInPrev - i;
+      html += `<button class="cal-day other-month" disabled>${d}</button>`;
+    }
+    for (let d = 1; d <= daysInMonth; d++) {
+      const iso = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const isFuture = iso > TODAY;
+      const isToday = iso === TODAY;
+      const isSelected = iso === VIEW_DATE;
+      const cls = ['cal-day',
+        isToday ? 'today' : '',
+        isSelected ? 'selected' : '',
+        isFuture ? 'future' : ''].filter(Boolean).join(' ');
+      html += `<button class="${cls}" data-date="${iso}" ${isFuture ? 'disabled' : ''}>${d}</button>`;
+    }
+    const totalCells = startOffset + daysInMonth;
+    const remaining = (Math.ceil(totalCells / 7) * 7) - totalCells;
+    for (let i = 1; i <= remaining; i++) {
+      html += `<button class="cal-day other-month" disabled>${i}</button>`;
+    }
+    grid.innerHTML = html;
+    grid.querySelectorAll('.cal-day[data-date]').forEach(btn => {
+      btn.addEventListener('click', () => navigateToDate(btn.dataset.date));
+    });
+  }
+  function navigateToDate(iso) {
+    if (iso === TODAY) window.location.href = './';
+    else window.location.href = `./?date=${iso}`;
+  }
+  document.getElementById('date').addEventListener('click', openCalendar);
+  document.getElementById('calClose').addEventListener('click', closeCalendar);
+  document.getElementById('calBackdrop').addEventListener('click', e => {
+    if (e.target.id === 'calBackdrop') closeCalendar();
+  });
+  document.getElementById('calPrev').addEventListener('click', () => {
+    CAL_MONTH.month--;
+    if (CAL_MONTH.month < 0) { CAL_MONTH.month = 11; CAL_MONTH.year--; }
+    renderCalendar();
+  });
+  document.getElementById('calNext').addEventListener('click', () => {
+    CAL_MONTH.month++;
+    if (CAL_MONTH.month > 11) { CAL_MONTH.month = 0; CAL_MONTH.year++; }
+    renderCalendar();
+  });
+  document.getElementById('calToday').addEventListener('click', () => navigateToDate(TODAY));
+
   let pressState = null;
   let ARMED = null;
   const MOVE_THRESHOLD = 10;
-
   function getEventPos(e) {
     if (e.touches && e.touches[0]) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
     return { x: e.clientX, y: e.clientY };
   }
-
   function startPress(e, item) {
     if (PENDING_DELETE) return;
     const id = +item.dataset.id;
@@ -1149,7 +1463,6 @@
     };
     item.classList.add('pressing');
   }
-
   function cancelPress() {
     if (!pressState) return;
     clearTimeout(pressState.timer);
@@ -1158,18 +1471,22 @@
     pressState = null;
     return fired;
   }
-
   function armRow(item, type, id) {
+    const spec = DELETABLES[type];
+    if (!spec) return;
+    const row = spec.array().find(r => r.id === id);
+    if (!row) return;
+    const showEdit = spec.canEdit(row);
     ARMED = { type, id, item, originalHTML: item.innerHTML };
     item.classList.add('armed');
     item.innerHTML = `
-      <div class="delete-confirm-bar">
-        <span class="delete-confirm-text">delete this?</span>
-        <button class="delete-confirm-delete">DELETE</button>
-        <button class="delete-confirm-cancel">CANCEL</button>
+      <div class="action-bar">
+        <span class="action-text">${showEdit ? 'edit or delete?' : 'delete this?'}</span>
+        ${showEdit ? '<button class="action-btn edit">EDIT</button>' : ''}
+        <button class="action-btn delete">DELETE</button>
+        <button class="action-btn cancel">CANCEL</button>
       </div>`;
   }
-
   function clearArmed() {
     if (!ARMED) return;
     const { type } = ARMED;
@@ -1183,6 +1500,7 @@
     if (e.target.closest('.source')) return;
     if (e.target.closest('#foodToggle')) return;
     if (e.target.closest('#spendToggle')) return;
+    if (e.target.closest('.modal-backdrop')) return;
     const target = e.target.closest('.long-pressable');
     if (!target) return;
     if (target.classList.contains('armed')) return;
@@ -1192,11 +1510,8 @@
         `.long-pressable[data-type="${target.dataset.type}"][data-id="${target.dataset.id}"]`);
       if (!fresh) return;
       startPress(e, fresh);
-    } else {
-      startPress(e, target);
-    }
+    } else startPress(e, target);
   });
-
   document.addEventListener('pointermove', e => {
     if (!pressState) return;
     const pos = getEventPos(e);
@@ -1204,52 +1519,54 @@
     const dy = pos.y - pressState.startY;
     if (Math.hypot(dx, dy) > MOVE_THRESHOLD) cancelPress();
   });
-
   document.addEventListener('pointerup', cancelPress);
   document.addEventListener('pointercancel', cancelPress);
   document.addEventListener('pointerleave', cancelPress);
-
   document.addEventListener('scroll', () => { if (ARMED) clearArmed(); }, true);
-
   document.addEventListener('contextmenu', e => {
     if (e.target.closest('.long-pressable')) e.preventDefault();
   });
 
   document.addEventListener('click', async e => {
     if (e.target.closest('.toast')) return;
-
-    if (e.target.classList.contains('delete-confirm-delete')) {
+    if (e.target.closest('.modal-backdrop')) return;
+    if (e.target.classList.contains('edit')) {
+      if (ARMED) {
+        const { type, id } = ARMED;
+        ARMED = null;
+        const spec = DELETABLES[type];
+        if (spec) spec.render();
+        openEditModal(type, id);
+      }
+      return;
+    }
+    if (e.target.classList.contains('delete')) {
       if (ARMED) { const { type, id } = ARMED; ARMED = null; startDelete(type, id); }
       return;
     }
-    if (e.target.classList.contains('delete-confirm-cancel') ||
+    if (e.target.classList.contains('cancel') ||
         (ARMED && !e.target.closest('.long-pressable.armed'))) {
       clearArmed();
       return;
     }
     if (ARMED) return;
-
     if (e.target.closest('.source')) return;
     if (e.target.closest('#foodToggle')) return;
     if (e.target.closest('#spendToggle')) return;
-
     const item = e.target.closest('.list-item');
     if (!item) return;
     if (item.classList.contains('optimistic')) return;
     if (pressState === null && item.classList.contains('pressing')) return;
-
     const id = +item.dataset.id;
     const type = item.dataset.type;
     if (type !== 'tasks' && type !== 'shopping') return;
     const arr = type === 'tasks' ? TASKS : SHOPPING;
     const row = arr.find(r => r.id === id);
     if (!row) return;
-
     const newDone = !row.done;
     row.done = newDone;
     row.done_at = newDone ? new Date().toISOString() : null;
     if (type === 'tasks') renderTasks(); else renderShopping();
-
     try {
       await sbPatch(`${type}?id=eq.${id}`, { done: newDone, done_at: row.done_at });
     } catch (err) {
@@ -1260,11 +1577,9 @@
     }
   });
 
-  // CAPTURE
   const captureBox = document.getElementById('capture');
   const captureInput = document.getElementById('captureInput');
   const captureBtn = document.getElementById('captureBtn');
-
   function autosize() {
     captureInput.style.height = 'auto';
     captureInput.style.height = Math.min(captureInput.scrollHeight, 200) + 'px';
@@ -1283,12 +1598,9 @@
   async function send() {
     const text = captureInput.value.trim();
     if (!text) return;
-
     if (PENDING_DELETE) commitPendingDelete();
-
     captureBtn.disabled = true;
     captureBtn.textContent = "…";
-
     try {
       const res = await fetch(CAPTURE_FN_URL, {
         method: "POST",
