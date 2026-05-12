@@ -102,6 +102,21 @@
     transform: scale(0.98);
     transition: background 0.5s ease-out, transform 0.5s ease-out;
   }
+  .list-item.armed { background: var(--danger-bg); }
+  .list-item.armed:active { background: var(--danger-bg); }
+  .delete-confirm-bar { display: flex; align-items: center; gap: 12px; width: 100%; }
+  .delete-confirm-text { flex: 1; font-size: 14px; color: var(--text-dim); }
+  .delete-confirm-delete {
+    background: var(--danger); color: #fff; border: none;
+    padding: 6px 16px; border-radius: 6px; font-size: 13px; font-weight: 600;
+    cursor: pointer; letter-spacing: 0.3px;
+  }
+  .delete-confirm-cancel {
+    background: transparent; color: var(--text-dim);
+    border: 1px solid var(--border-strong);
+    padding: 6px 14px; border-radius: 6px; font-size: 13px;
+    cursor: pointer;
+  }
   .checkbox {
     width: 20px; height: 20px; border: 1.5px solid var(--text-faint);
     border-radius: 6px; flex-shrink: 0; margin-top: 1px;
@@ -696,6 +711,7 @@
   // INTERACTIONS — click (toggle done) + long-press (delete)
   // ============================================
   let pressState = null; // { item, table, id, timer, startX, startY, fired }
+  let ARMED = null; // { table, id, item } — row awaiting delete confirmation
   const MOVE_THRESHOLD = 10; // pixels — cancel press if finger moves more
 
   function getEventPos(e) {
@@ -716,8 +732,7 @@
         pressState.fired = true;
         // haptic if available
         if (navigator.vibrate) navigator.vibrate(30);
-        startDelete(table, id);
-        // Visual press class is removed by the cleanup below
+        armRow(item, table, id);
         if (pressState.item) pressState.item.classList.remove('pressing');
       }, LONG_PRESS_MS),
     };
@@ -733,13 +748,41 @@
     return fired;
   }
 
+  function armRow(item, table, id) {
+    ARMED = { table, id, item };
+    item.classList.add('armed');
+    item.innerHTML = `
+      <div class="delete-confirm-bar">
+        <span class="delete-confirm-text">delete this?</span>
+        <button class="delete-confirm-delete">DELETE</button>
+        <button class="delete-confirm-cancel">CANCEL</button>
+      </div>`;
+  }
+
+  function clearArmed() {
+    if (!ARMED) return;
+    const { table } = ARMED;
+    ARMED = null;
+    if (table === 'tasks') renderTasks(); else renderShopping();
+  }
+
   // Use pointer events where available, fall back to touch + mouse
   document.addEventListener('pointerdown', e => {
     if (e.target.closest('.toast')) return;
     if (e.target.closest('.source')) return;
-    const item = e.target.closest('.list-item');
-    if (!item) return;
-    startPress(e, item);
+    const target = e.target.closest('.list-item');
+    if (!target) return;
+    if (target.classList.contains('armed')) return; // confirm bar handles via click
+    if (ARMED) {
+      clearArmed();
+      // Get fresh DOM reference after re-render
+      const fresh = document.querySelector(
+        `.list-item[data-type="${target.dataset.type}"][data-id="${target.dataset.id}"]`);
+      if (!fresh) return;
+      startPress(e, fresh);
+    } else {
+      startPress(e, target);
+    }
   });
 
   document.addEventListener('pointermove', e => {
@@ -754,15 +797,30 @@
   document.addEventListener('pointercancel', cancelPress);
   document.addEventListener('pointerleave', cancelPress);
 
+  document.addEventListener('scroll', () => { if (ARMED) clearArmed(); }, true);
+
   // Suppress the native context menu when a long press fires (so Android/iOS
   // don't try to pop their own selection menu after our 500ms hold).
   document.addEventListener('contextmenu', e => {
     if (e.target.closest('.list-item')) e.preventDefault();
   });
 
-  // CLICK = toggle done (only if long-press didn't fire)
+  // CLICK = armed confirm buttons, or toggle done (only if long-press didn't fire)
   document.addEventListener('click', async e => {
     if (e.target.closest('.toast')) return;
+
+    // Armed confirm bar
+    if (e.target.classList.contains('delete-confirm-delete')) {
+      if (ARMED) { const { table, id } = ARMED; ARMED = null; startDelete(table, id); }
+      return;
+    }
+    if (e.target.classList.contains('delete-confirm-cancel') ||
+        (ARMED && !e.target.closest('.list-item.armed'))) {
+      clearArmed();
+      return;
+    }
+    if (ARMED) return; // tap inside armed row but not on a button — ignore
+
     if (e.target.closest('.source')) return;
     const item = e.target.closest('.list-item');
     if (!item) return;
