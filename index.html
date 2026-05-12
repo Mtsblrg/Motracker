@@ -532,9 +532,9 @@
                          .map(r => ({ created_at: r.created_at, value: +r.value, note: r.note }));
   }
 
-  // Load today's captures = entries + their routed siblings (by time window)
-  // Strategy: pull today's entries, then for each entry fetch other rows from
-  // every table created within ±2s of it. That lets us label routes.
+  // Load today's captures = entries + their routed siblings via entry_id FK.
+  // Each sibling table has an entry_id column linking back to entries(id).
+  // Clean join, no timing guesswork.
   async function loadRecentCaptures() {
     const todayStart = `${TODAY}T00:00:00`;
     const todayEnd   = `${TODAY}T23:59:59`;
@@ -543,40 +543,36 @@
     );
     if (entries.length === 0) { RECENT_CAPTURES = []; return; }
 
-    // Pull all rows from siblings in one shot, today only
+    const entryIds = entries.map(e => e.id);
+    const idFilter = `entry_id=in.(${entryIds.join(',')})`;
+
     const [tasksRows, shoppingRows, notesRows, remindersRows, metricsRows] = await Promise.all([
-      sbGet(`tasks?created_at=gte.${todayStart}&created_at=lte.${todayEnd}&select=id,created_at,text`),
-      sbGet(`shopping?created_at=gte.${todayStart}&created_at=lte.${todayEnd}&select=id,created_at,item`),
-      sbGet(`notes?created_at=gte.${todayStart}&created_at=lte.${todayEnd}&select=id,created_at,text`),
-      sbGet(`reminders?created_at=gte.${todayStart}&created_at=lte.${todayEnd}&select=id,created_at,text`),
-      sbGet(`metrics?created_at=gte.${todayStart}&created_at=lte.${todayEnd}&select=id,created_at,metric_type,value,note`),
+      sbGet(`tasks?${idFilter}&select=entry_id`),
+      sbGet(`shopping?${idFilter}&select=entry_id`),
+      sbGet(`notes?${idFilter}&select=entry_id`),
+      sbGet(`reminders?${idFilter}&select=entry_id`),
+      sbGet(`metrics?${idFilter}&select=entry_id,metric_type`),
     ]);
 
-    const MATCH_WINDOW_MS = 3000; // 3 seconds — capture writes happen near-simultaneously
-
-    function siblingsFor(entry) {
-      const t0 = new Date(entry.created_at).getTime();
-      const within = (row) => Math.abs(new Date(row.created_at).getTime() - t0) <= MATCH_WINDOW_MS;
-      const routes = [];
-      if (tasksRows.some(within))     routes.push({ table: 'tasks',    label: 'tasks' });
-      if (shoppingRows.some(within))  routes.push({ table: 'shopping', label: 'shopping' });
-      if (notesRows.some(within))     routes.push({ table: 'notes',    label: 'note' });
-      if (remindersRows.some(within)) routes.push({ table: 'reminders', label: 'reminder' });
-      // metrics — group by metric_type so we show calories/spend/etc. distinctly
-      const matchedMetrics = metricsRows.filter(within);
-      const seenTypes = new Set();
-      matchedMetrics.forEach(m => {
-        if (seenTypes.has(m.metric_type)) return;
-        seenTypes.add(m.metric_type);
-        routes.push({ table: 'metrics', metric_type: m.metric_type, label: m.metric_type });
-      });
-      return routes;
+    // Build lookup: entryId -> Set of route labels
+    const routesByEntry = new Map();
+    function add(entryId, label) {
+      if (!routesByEntry.has(entryId)) routesByEntry.set(entryId, new Set());
+      routesByEntry.get(entryId).add(label);
     }
+    tasksRows.forEach(r => add(r.entry_id, 'tasks'));
+    shoppingRows.forEach(r => add(r.entry_id, 'shopping'));
+    notesRows.forEach(r => add(r.entry_id, 'note'));
+    remindersRows.forEach(r => add(r.entry_id, 'reminder'));
+    metricsRows.forEach(r => add(r.entry_id, r.metric_type));
 
-    RECENT_CAPTURES = entries.map(e => ({
-      entry: e,
-      routes: siblingsFor(e),
-    }));
+    RECENT_CAPTURES = entries.map(e => {
+      const labels = routesByEntry.has(e.id) ? Array.from(routesByEntry.get(e.id)) : [];
+      return {
+        entry: e,
+        routes: labels.map(label => ({ label })),
+      };
+    });
   }
 
   async function loadAll() {
