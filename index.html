@@ -1,48 +1,632 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="theme-color" content="#0a0a0a">
-  <title>Motracker</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#0d0f12" />
+<title>Motracker — today</title>
+<style>
+  :root {
+    --bg: #0d0f12;
+    --surface: #161a20;
+    --surface-hover: #1c2026;
+    --border: #22262c;
+    --border-strong: #2a2d33;
+    --text: #e8e8e8;
+    --text-dim: #a8acb4;
+    --text-faint: #6a6e76;
+    --accent: #c4f060;
+    --accent-dim: #9bb84c;
+    --danger: #f0796e;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { background: var(--bg); }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    color: var(--text);
+    padding: 16px 16px 80px;
+    max-width: 460px;
+    margin: 0 auto;
+    font-size: 15px;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+
+  header {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 18px; padding: 4px 4px 0;
+  }
+  header h1 { font-size: 20px; font-weight: 600; letter-spacing: -0.5px; color: var(--accent); }
+  .header-right { display: flex; align-items: baseline; gap: 14px; }
+  .header-right .date { font-size: 13px; color: var(--text-dim); letter-spacing: 0.3px; }
+  .header-right .nav { font-size: 13px; color: var(--text-faint); text-decoration: none; }
+  .header-right .nav:hover { color: var(--accent); }
+
+  .capture {
+    background: var(--surface); border: 1px solid var(--border-strong);
+    border-radius: var(--radius); padding: 12px 14px; margin-bottom: 18px;
+    transition: border-color 0.15s;
+  }
+  .capture:focus-within { border-color: var(--accent); }
+  .capture textarea {
+    width: 100%; border: none; background: transparent; color: var(--text);
+    font-family: inherit; font-size: 15px; line-height: 1.5; resize: none;
+    outline: none; min-height: 22px; max-height: 200px; overflow-y: auto;
+  }
+  .capture textarea::placeholder { color: var(--text-faint); }
+  .capture-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 10px; height: 0; overflow: hidden; transition: height 0.2s;
+  }
+  .capture:focus-within .capture-bar,
+  .capture.has-text .capture-bar { height: 32px; }
+  .capture-bar .hint { font-size: 12px; color: var(--text-faint); }
+  .capture-bar button {
+    background: var(--accent); color: var(--bg); border: none; border-radius: 8px;
+    padding: 6px 14px; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  .capture-bar button:disabled {
+    background: var(--border-strong); color: var(--text-faint); cursor: not-allowed;
+  }
+
+  section { margin-bottom: 18px; }
+  .section-head {
+    display: flex; align-items: baseline; justify-content: space-between; padding: 0 4px 8px;
+  }
+  .section-head h2 {
+    font-size: 11px; font-weight: 600; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--text-dim);
+  }
+  .section-head .count { font-size: 12px; color: var(--text-faint); }
+
+  .list {
+    background: var(--surface); border: 1px solid var(--border-strong);
+    border-radius: var(--radius); overflow: hidden;
+  }
+  .list-item {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 14px 16px; border-bottom: 1px solid var(--border);
+    cursor: pointer; transition: background 0.1s;
+  }
+  .list-item:last-child { border-bottom: none; }
+  .list-item:active { background: var(--surface-hover); }
+  .list-item.optimistic { opacity: 0.55; }
+  .checkbox {
+    width: 20px; height: 20px; border: 1.5px solid var(--text-faint);
+    border-radius: 6px; flex-shrink: 0; margin-top: 1px;
+    display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+  }
+  .list-item.done .checkbox { background: var(--accent); border-color: var(--accent); }
+  .list-item.done .checkbox::after {
+    content: "✓"; color: var(--bg); font-size: 14px; font-weight: 700; line-height: 1;
+  }
+  .item-body { flex: 1; min-width: 0; }
+  .item-text { font-size: 15px; line-height: 1.4; word-wrap: break-word; }
+  .item-meta {
+    display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px;
+    font-size: 12px; color: var(--text-dim); align-items: center;
+  }
+  .item-meta:empty { display: none; }
+  .deadline { color: var(--accent-dim); font-weight: 500; padding: 2px 4px; }
+  .deadline.overdue { color: var(--danger); }
+  .age { color: var(--text-faint); font-style: italic; padding: 2px 4px; }
+
+  .tag {
+    padding: 2px 8px; border-radius: 10px;
+    font-size: 11px; font-weight: 500; letter-spacing: 0.2px;
+    border: 1px solid transparent;
+  }
+  .tag-work     { background: rgba(55, 138, 221, 0.12); color: #85b7eb; border-color: rgba(55, 138, 221, 0.25); }
+  .tag-health   { background: rgba(99, 153, 34, 0.12);  color: #c0dd97; border-color: rgba(99, 153, 34, 0.25); }
+  .tag-finance  { background: rgba(186, 117, 23, 0.12); color: #f0a955; border-color: rgba(186, 117, 23, 0.3); }
+  .tag-mhc      { background: rgba(216, 90, 48, 0.12);  color: #f0997b; border-color: rgba(216, 90, 48, 0.3); }
+  .tag-urgent   { background: rgba(226, 75, 74, 0.15);  color: #f09595; border-color: rgba(226, 75, 74, 0.35); }
+  .tag-personal { background: rgba(29, 158, 117, 0.12); color: #5dcaa5; border-color: rgba(29, 158, 117, 0.25); }
+  .tag-growth   { background: rgba(127, 119, 221, 0.15); color: #afa9ec; border-color: rgba(127, 119, 221, 0.3); }
+  .tag-fusi     { background: rgba(212, 83, 126, 0.12); color: #ed93b1; border-color: rgba(212, 83, 126, 0.3); }
+  .tag-default  { background: var(--border); color: var(--text-dim); border-color: var(--border-strong); }
+
+  .source {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 8px 3px 6px;
+    border-radius: 10px;
+    font-size: 11px; font-weight: 500; letter-spacing: 0.3px;
+    border: 1px solid var(--border-strong);
+    background: transparent; color: var(--text-dim);
+    flex-shrink: 0; margin-top: 1px; white-space: nowrap;
+  }
+  .source-icon { font-size: 11px; line-height: 1; }
+  .source-capture  .source-icon { color: var(--accent); }
+  .source-gcal     .source-icon { color: #85b7eb; }
+  .source-bank     .source-icon { color: #f0a955; }
+  .source-chat     .source-icon { color: #afa9ec; }
+  .source-gmail    .source-icon { color: #f09595; }
+  .source-manual   .source-icon { color: var(--text-dim); }
+
+  .list-item.done .item-text {
+    color: var(--text-faint); text-decoration: line-through; text-decoration-color: var(--text-faint);
+  }
+  .list-item.done .item-meta { opacity: 0.5; }
+  .list-item.done .source { opacity: 0.45; }
+
+  .empty {
+    padding: 18px 16px; text-align: center; font-size: 13px;
+    color: var(--text-faint); font-style: italic;
+  }
+  .loading {
+    padding: 18px 16px; text-align: center; font-size: 13px;
+    color: var(--text-faint);
+  }
+  .error-msg {
+    padding: 14px 16px; font-size: 13px; color: var(--danger);
+    background: rgba(240, 121, 110, 0.08); border: 1px solid rgba(240, 121, 110, 0.25);
+    border-radius: var(--radius);
+  }
+
+  .metric {
+    background: var(--surface); border: 1px solid var(--border-strong);
+    border-radius: var(--radius); padding: 16px;
+  }
+  .metric-head {
+    display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px;
+  }
+  .metric-current {
+    font-size: 22px; font-weight: 600; color: var(--text);
+    letter-spacing: -0.3px; font-variant-numeric: tabular-nums;
+  }
+  .metric-current .unit {
+    font-size: 13px; font-weight: 400; color: var(--text-dim);
+    margin-left: 4px; letter-spacing: 0;
+  }
+  .metric-pct {
+    font-size: 15px; font-weight: 600; color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+  .metric-pct.over { color: var(--danger); }
+  .bar { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; position: relative; }
+  .bar-fill { height: 100%; background: var(--accent); border-radius: 4px; transition: width 0.4s ease-out; }
+  .bar-fill.over { background: var(--danger); }
+  .metric-foot {
+    margin-top: 10px; font-size: 13px; color: var(--text-dim);
+    display: flex; justify-content: space-between;
+    font-variant-numeric: tabular-nums;
+  }
+  .metric-foot .goal-value { color: var(--text); font-weight: 500; }
+  .metric-foot .remaining { color: var(--accent-dim); font-weight: 500; }
+  .metric-foot .remaining.over { color: var(--danger); }
+
+  .toast {
+    position: fixed; bottom: 24px; left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--accent); color: var(--bg);
+    padding: 12px 20px; border-radius: 12px;
+    font-size: 14px; font-weight: 500;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    opacity: 0; transition: all 0.3s ease-out;
+    z-index: 100; max-width: 360px; text-align: center;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast.error { background: var(--danger); }
+</style>
 </head>
 <body>
-  <header>
-    <h1>Motracker <span id="connStatus" class="conn-status" title="Supabase connection">⚪</span></h1>
-  </header>
 
-  <nav class="tabs">
-    <button class="tab active" data-tab="capture">📥 Capture</button>
-    <button class="tab" data-tab="today">📅 Today</button>
-    <button class="tab" data-tab="history">📊 History</button>
-    <button class="tab" data-tab="settings">⚙️ Settings</button>
-  </nav>
+<header>
+  <h1>motracker</h1>
+  <div class="header-right">
+    <span class="date" id="date">—</span>
+    <a class="nav" href="./capture.html">capture →</a>
+  </div>
+</header>
 
-  <main>
-    <section id="tab-capture" class="tab-panel active">
-      <h2>Capture</h2>
-      <p class="placeholder">Single input + AI routing. Built in next chat.</p>
-    </section>
+<div class="capture" id="capture">
+  <textarea id="captureInput" rows="1" placeholder="capture anything..."></textarea>
+  <div class="capture-bar">
+    <span class="hint">enter to send · shift+enter for newline</span>
+    <button id="captureBtn" disabled>send</button>
+  </div>
+</div>
 
-    <section id="tab-today" class="tab-panel">
-      <h2>Today</h2>
-      <p class="placeholder">Tasks, shopping, notes, metrics, reminders.</p>
-    </section>
+<section>
+  <div class="section-head">
+    <h2>tasks</h2>
+    <span class="count" id="tasksCount"></span>
+  </div>
+  <div class="list" id="tasksList">
+    <div class="loading">loading…</div>
+  </div>
+</section>
 
-    <section id="tab-history" class="tab-panel">
-      <h2>History</h2>
-      <p class="placeholder">Archive + trend graphs vs target.</p>
-    </section>
+<section>
+  <div class="section-head">
+    <h2>shopping</h2>
+    <span class="count" id="shoppingCount"></span>
+  </div>
+  <div class="list" id="shoppingList">
+    <div class="loading">loading…</div>
+  </div>
+</section>
 
-    <section id="tab-settings" class="tab-panel">
-      <h2>Settings</h2>
-      <div id="settingsList" class="settings-list">
-        <p class="placeholder">Loading…</p>
+<section>
+  <div class="section-head"><h2>calories</h2></div>
+  <div class="metric" id="caloriesMetric">
+    <div class="loading">loading…</div>
+  </div>
+</section>
+
+<section>
+  <div class="section-head"><h2>spend</h2></div>
+  <div class="metric" id="spendMetric">
+    <div class="loading">loading…</div>
+  </div>
+</section>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ============================================
+  // CONFIG
+  // ============================================
+  const SUPABASE_URL = "https://fwqhomgawlgicqiqqqhw.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ3cWhvbWdhd2xnaWNxaXFxcWh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyMTE1NDYsImV4cCI6MjA5Mjc4NzU0Nn0.LF82rWM0rX5FKY0Qo5Vsym_VWgV2reL_U8LkHbfWVHI";
+  const CAPTURE_FN_URL = `${SUPABASE_URL}/functions/v1/capture`;
+  const REST = `${SUPABASE_URL}/rest/v1`;
+
+  const HEADERS = {
+    "apikey": SUPABASE_ANON_KEY,
+    "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+    "Content-Type": "application/json",
+  };
+
+  const TAG_CLASSES = {
+    work: 'tag-work', mhc: 'tag-mhc', health: 'tag-health', finance: 'tag-finance',
+    urgent: 'tag-urgent', personal: 'tag-personal', growth: 'tag-growth', fusi: 'tag-fusi',
+  };
+
+  const SOURCES = {
+    capture: { icon: '✎', label: 'capture' },
+    gcal:    { icon: '◰', label: 'gcal'    },
+    bank:    { icon: '€', label: 'bank'    },
+    chat:    { icon: '◇', label: 'chat'    },
+    gmail:   { icon: '✉', label: 'gmail'   },
+    manual:  { icon: '•', label: 'manual'  },
+  };
+
+  function todayISO() {
+    const d = new Date();
+    const bpDate = new Date(d.getTime() + 2 * 3600 * 1000);
+    return bpDate.toISOString().slice(0, 10);
+  }
+  const TODAY = todayISO();
+
+  // ============================================
+  // STATE
+  // ============================================
+  let TASKS = [];
+  let SHOPPING = [];
+  let CALORIES_TODAY = 0;
+  let SPEND_TODAY = 0;
+  let GOALS = { calories: 2500, spend: 10000 };
+
+  // ============================================
+  // REST HELPERS
+  // ============================================
+  async function sbGet(path) {
+    const res = await fetch(`${REST}/${path}`, { headers: HEADERS });
+    if (!res.ok) throw new Error(`GET ${path}: ${res.status}`);
+    return res.json();
+  }
+
+  async function sbPatch(path, body) {
+    const res = await fetch(`${REST}/${path}`, {
+      method: "PATCH",
+      headers: { ...HEADERS, "Prefer": "return=representation" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const t = await res.text();
+      throw new Error(`PATCH ${path}: ${res.status} ${t}`);
+    }
+    return res.json();
+  }
+
+  // ============================================
+  // FETCH
+  // ============================================
+  async function loadGoals() {
+    try {
+      const rows = await sbGet(`settings?key=in.(daily_calorie_target,daily_spend_target_huf)`);
+      rows.forEach(r => {
+        if (r.key === "daily_calorie_target")     GOALS.calories = +r.value;
+        if (r.key === "daily_spend_target_huf")   GOALS.spend    = +r.value;
+      });
+    } catch (e) {
+      console.warn("Failed to load goals, using defaults:", e);
+    }
+  }
+
+  async function loadTasks() {
+    const url = `tasks?or=(done.eq.false,and(done.eq.true,done_at.gte.${TODAY}T00:00:00))&select=*&order=created_at.desc`;
+    TASKS = await sbGet(url);
+  }
+
+  async function loadShopping() {
+    const url = `shopping?or=(done.eq.false,and(done.eq.true,done_at.gte.${TODAY}T00:00:00))&select=*&order=created_at.desc`;
+    SHOPPING = await sbGet(url);
+  }
+
+  async function loadMetrics() {
+    const url = `metrics?date=eq.${TODAY}&metric_type=in.(calories,spend)&select=metric_type,value`;
+    const rows = await sbGet(url);
+    CALORIES_TODAY = rows.filter(r => r.metric_type === "calories").reduce((s, r) => s + +r.value, 0);
+    SPEND_TODAY    = rows.filter(r => r.metric_type === "spend").reduce((s, r) => s + +r.value, 0);
+  }
+
+  async function loadAll() {
+    try {
+      await Promise.all([loadGoals(), loadTasks(), loadShopping(), loadMetrics()]);
+      renderAll();
+    } catch (e) {
+      console.error(e);
+      document.getElementById("tasksList").innerHTML =
+        `<div class="error-msg">load failed: ${escapeHtml(e.message)}</div>`;
+      document.getElementById("shoppingList").innerHTML = "";
+      document.getElementById("caloriesMetric").innerHTML = "";
+      document.getElementById("spendMetric").innerHTML = "";
+    }
+  }
+
+  // ============================================
+  // HELPERS
+  // ============================================
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[c]));
+  }
+
+  function fmtShortDate(iso) {
+    const d = new Date(iso + (iso.length === 10 ? 'T00:00:00' : ''));
+    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }).toLowerCase();
+  }
+
+  function fmtDeadline(iso) {
+    if (!iso) return null;
+    const today = new Date(TODAY + 'T00:00:00');
+    const d = new Date(iso + 'T00:00:00');
+    const diff = Math.round((d - today) / 86400000);
+    const date = fmtShortDate(iso);
+    if (diff < 0)  return { text: `${Math.abs(diff)}d overdue (${date})`, overdue: true };
+    if (diff === 0) return { text: `today (${date})`, overdue: false };
+    if (diff === 1) return { text: `tomorrow (${date})`, overdue: false };
+    if (diff < 7)  return { text: `in ${diff}d (${date})`, overdue: false };
+    return { text: date, overdue: false };
+  }
+
+  function ageLabel(createdAt) {
+    const today = new Date(TODAY + 'T00:00:00');
+    const c = new Date(createdAt);
+    const cDateOnly = new Date(c.getFullYear(), c.getMonth(), c.getDate());
+    const diff = Math.round((today - cDateOnly) / 86400000);
+    if (diff <= 0) return null;
+    if (diff === 1) return "captured yesterday";
+    return `captured ${diff}d ago`;
+  }
+
+  function tagPill(tag) {
+    const cls = TAG_CLASSES[String(tag).toLowerCase()] || 'tag-default';
+    return `<span class="tag ${cls}">${escapeHtml(tag)}</span>`;
+  }
+
+  function sourcePill(source) {
+    const s = SOURCES[source] || SOURCES.manual;
+    return `<span class="source source-${escapeHtml(source)}"><span class="source-icon">${s.icon}</span>${escapeHtml(s.label)}</span>`;
+  }
+
+  // Sort: 1) undone with deadline today or earlier 2) undone with future deadline 3) undone no-deadline captured today 4) done today 5) undone from past
+  function sortItems(items, isTask) {
+    const today = TODAY;
+    function bucket(t) {
+      if (t.done) return 4;
+      if (isTask && t.deadline) {
+        if (t.deadline <= today) return 1;
+        return 2;
+      }
+      const created = (t.created_at || '').slice(0, 10);
+      if (created === today) return 3;
+      return 5;
+    }
+    return [...items].sort((a, b) => {
+      const ba = bucket(a), bb = bucket(b);
+      if (ba !== bb) return ba - bb;
+      if (ba === 1 || ba === 2) return (a.deadline || '').localeCompare(b.deadline || '');
+      if (ba === 4) return (b.done_at || '').localeCompare(a.done_at || '');
+      return (b.created_at || '').localeCompare(a.created_at || '');
+    });
+  }
+
+  // ============================================
+  // RENDER
+  // ============================================
+  function renderTasks() {
+    const list = document.getElementById('tasksList');
+    const items = sortItems(TASKS, true);
+    const open = TASKS.filter(t => !t.done).length;
+    document.getElementById('tasksCount').textContent = open === 0 ? 'all done' : `${open} open`;
+
+    if (items.length === 0) {
+      list.innerHTML = '<div class="empty">nothing for today</div>';
+      return;
+    }
+    list.innerHTML = items.map(t => {
+      const meta = [];
+      const dl = fmtDeadline(t.deadline);
+      if (dl) {
+        meta.push(`<span class="deadline${dl.overdue ? ' overdue' : ''}">${escapeHtml(dl.text)}</span>`);
+      } else if (!t.done) {
+        const age = ageLabel(t.created_at);
+        if (age) meta.push(`<span class="age">${age}</span>`);
+      }
+      (t.tags || []).forEach(tg => meta.push(tagPill(tg)));
+      return `
+        <div class="list-item ${t.done ? 'done' : ''}" data-type="tasks" data-id="${t.id}">
+          <div class="checkbox"></div>
+          <div class="item-body">
+            <div class="item-text">${escapeHtml(t.text)}</div>
+            <div class="item-meta">${meta.join('')}</div>
+          </div>
+          ${sourcePill(t.source || 'capture')}
+        </div>`;
+    }).join('');
+  }
+
+  function renderShopping() {
+    const list = document.getElementById('shoppingList');
+    const items = sortItems(SHOPPING, false);
+    const open = SHOPPING.filter(s => !s.done).length;
+    document.getElementById('shoppingCount').textContent = open === 0 ? 'empty' : `${open} items`;
+
+    if (items.length === 0) {
+      list.innerHTML = '<div class="empty">list is empty</div>';
+      return;
+    }
+    list.innerHTML = items.map(s => {
+      const meta = [];
+      if (!s.done) {
+        const age = ageLabel(s.created_at);
+        if (age) meta.push(`<span class="age">${age}</span>`);
+      }
+      (s.tags || []).forEach(tg => meta.push(tagPill(tg)));
+      return `
+        <div class="list-item ${s.done ? 'done' : ''}" data-type="shopping" data-id="${s.id}">
+          <div class="checkbox"></div>
+          <div class="item-body">
+            <div class="item-text">${escapeHtml(s.item)}</div>
+            <div class="item-meta">${meta.join('')}</div>
+          </div>
+          ${sourcePill(s.source || 'capture')}
+        </div>`;
+    }).join('');
+  }
+
+  function renderMetric(elId, current, goal, unit) {
+    const pct = goal > 0 ? Math.round((current / goal) * 100) : 0;
+    const over = pct > 100;
+    const barWidth = Math.min(pct, 100);
+    document.getElementById(elId).innerHTML = `
+      <div class="metric-head">
+        <span class="metric-current">${current.toLocaleString()}<span class="unit">${unit}</span></span>
+        <span class="metric-pct ${over ? 'over' : ''}">${pct}%</span>
       </div>
-    </section>
-  </main>
+      <div class="bar"><div class="bar-fill ${over ? 'over' : ''}" style="width:${barWidth}%"></div></div>
+      <div class="metric-foot">
+        <span>goal <span class="goal-value">${goal.toLocaleString()} ${unit}</span></span>
+        <span class="remaining ${over ? 'over' : ''}">${over ? `+${(current - goal).toLocaleString()} over` : `${(goal - current).toLocaleString()} left`}</span>
+      </div>
+    `;
+  }
 
-  <script src="app.js"></script>
+  function renderAll() {
+    document.getElementById('date').textContent = fmtShortDate(TODAY);
+    renderTasks();
+    renderShopping();
+    renderMetric('caloriesMetric', CALORIES_TODAY, GOALS.calories, 'kcal');
+    renderMetric('spendMetric',    SPEND_TODAY,    GOALS.spend,    'HUF');
+  }
+
+  // ============================================
+  // INTERACTIONS
+  // ============================================
+  document.addEventListener('click', async e => {
+    if (e.target.closest('.source')) return;
+    const item = e.target.closest('.list-item');
+    if (!item) return;
+    if (item.classList.contains('optimistic')) return;
+
+    const id = +item.dataset.id;
+    const table = item.dataset.type;
+    const arr = table === 'tasks' ? TASKS : SHOPPING;
+    const row = arr.find(r => r.id === id);
+    if (!row) return;
+
+    const newDone = !row.done;
+    row.done = newDone;
+    row.done_at = newDone ? new Date().toISOString() : null;
+    if (table === 'tasks') renderTasks(); else renderShopping();
+
+    try {
+      await sbPatch(`${table}?id=eq.${id}`, { done: newDone, done_at: row.done_at });
+    } catch (err) {
+      row.done = !newDone;
+      row.done_at = null;
+      if (table === 'tasks') renderTasks(); else renderShopping();
+      showToast(`✕ couldn't save: ${err.message}`, true);
+    }
+  });
+
+  // CAPTURE
+  const captureBox = document.getElementById('capture');
+  const captureInput = document.getElementById('captureInput');
+  const captureBtn = document.getElementById('captureBtn');
+
+  function autosize() {
+    captureInput.style.height = 'auto';
+    captureInput.style.height = Math.min(captureInput.scrollHeight, 200) + 'px';
+  }
+  captureInput.addEventListener('input', () => {
+    autosize();
+    const has = captureInput.value.trim().length > 0;
+    captureBtn.disabled = !has;
+    captureBox.classList.toggle('has-text', has);
+  });
+  captureInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+  });
+  captureBtn.addEventListener('click', send);
+
+  function showToast(msg, error = false) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.toggle('error', error);
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2400);
+  }
+
+  async function send() {
+    const text = captureInput.value.trim();
+    if (!text) return;
+
+    captureBtn.disabled = true;
+    captureBtn.textContent = "…";
+
+    try {
+      const res = await fetch(CAPTURE_FN_URL, {
+        method: "POST",
+        headers: { ...HEADERS },
+        body: JSON.stringify({ text }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        showToast(`✕ ${data.error || "capture failed"}`, true);
+        console.error(data);
+        return;
+      }
+      captureInput.value = "";
+      autosize();
+      captureBox.classList.remove('has-text');
+      showToast(data.summary || "✓ logged");
+      loadAll();
+    } catch (e) {
+      showToast(`✕ network: ${e.message}`, true);
+    } finally {
+      captureBtn.disabled = false;
+      captureBtn.textContent = "send";
+    }
+  }
+
+  loadAll();
+</script>
+
 </body>
 </html>
