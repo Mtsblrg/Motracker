@@ -123,13 +123,27 @@
   }
 
   /* 7-day rows */
+  .day-block { border-bottom: 1px solid var(--border); }
+  .day-block:last-child { border-bottom: none; }
   .day-row {
     padding: 12px 14px;
-    border-bottom: 1px solid var(--border);
     display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    cursor: pointer;
+    transition: background 0.15s ease;
   }
-  .day-row:last-child { border-bottom: none; }
   .day-row.today { background: rgba(240, 169, 85, 0.04); }
+  .day-row.no-txns { cursor: default; }
+  .day-row:not(.no-txns):active { background: var(--surface-hover); }
+  .day-chevron {
+    flex-shrink: 0;
+    width: 14px;
+    font-size: 10px;
+    color: var(--text-faint);
+    text-align: center;
+    transition: transform 0.2s ease;
+  }
+  .day-block.expanded .day-chevron { transform: rotate(90deg); }
+  .day-block.no-txns .day-chevron { opacity: 0; }
   .day-body { flex: 1; min-width: 0; }
   .day-label {
     font-size: 14px; color: var(--text); font-weight: 500;
@@ -154,6 +168,20 @@
   }
   .day-amount.zero { color: var(--text-faint); font-weight: 400; }
   .day-amount.over { color: var(--danger); }
+
+  /* Day txn dropdown */
+  .day-txns {
+    display: none;
+    background: rgba(0, 0, 0, 0.15);
+    border-top: 1px solid var(--border);
+  }
+  .day-block.expanded .day-txns { display: block; }
+  .day-txns .txn-row {
+    padding: 10px 14px 10px 32px;
+    border-bottom: 1px solid var(--border);
+  }
+  .day-txns .txn-row:last-child { border-bottom: none; }
+  .day-txns .txn-merchant { font-size: 13px; }
 
   .loading {
     padding: 18px 16px; text-align: center; font-size: 13px;
@@ -310,21 +338,10 @@
     `;
   }
 
-  function renderTxnList(todayRows) {
-    const list = document.getElementById('txnList');
-    const countEl = document.getElementById('txnCount');
-
-    if (todayRows.length === 0) {
-      countEl.textContent = '0 today';
-      list.innerHTML = '<div class="empty">no transactions today</div>';
-      return;
-    }
-
-    countEl.textContent = `${todayRows.length} today`;
-
-    // Show newest first
-    const sorted = todayRows.slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-    list.innerHTML = sorted.map(r => {
+  function renderTxnRows(rows) {
+    // newest first
+    const sorted = rows.slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    return sorted.map(r => {
       const src = (r.source || '').toLowerCase();
       const srcLabel = src === 'revolut' ? 'revolut' : src === 'erste' ? 'erste' : (src || 'manual');
       const srcCls = src === 'revolut' ? 'src-revolut' : src === 'erste' ? 'src-erste' : '';
@@ -343,16 +360,35 @@
     }).join('');
   }
 
+  function renderTxnList(todayRows) {
+    const list = document.getElementById('txnList');
+    const countEl = document.getElementById('txnCount');
+
+    if (todayRows.length === 0) {
+      countEl.textContent = '0 today';
+      list.innerHTML = '<div class="empty">no transactions today</div>';
+      return;
+    }
+
+    countEl.textContent = `${todayRows.length} today`;
+    list.innerHTML = renderTxnRows(todayRows);
+  }
+
   function renderWeek(allRows, goal) {
     const days = get7DayWindow(); // newest to oldest
-    const totalsByDate = new Map();
-    days.forEach(d => totalsByDate.set(d, { total: 0, count: 0 }));
+    const rowsByDate = new Map();
+    days.forEach(d => rowsByDate.set(d, []));
     allRows.forEach(r => {
-      if (totalsByDate.has(r.date)) {
-        const bucket = totalsByDate.get(r.date);
-        bucket.total += +r.value;
-        bucket.count += 1;
-      }
+      if (rowsByDate.has(r.date)) rowsByDate.get(r.date).push(r);
+    });
+
+    const totalsByDate = new Map();
+    rowsByDate.forEach((rows, d) => {
+      totalsByDate.set(d, {
+        total: rows.reduce((s, r) => s + +r.value, 0),
+        count: rows.length,
+        rows,
+      });
     });
 
     const weekTotal = Array.from(totalsByDate.values()).reduce((s, b) => s + b.total, 0);
@@ -366,20 +402,34 @@
       const isToday = d === TODAY;
       const over = bucket.total > goal;
       const isZero = bucket.total === 0;
+      const hasTxns = bucket.count > 0;
       const barW = maxTotal > 0 ? Math.round((bucket.total / maxTotal) * 100) : 0;
       return `
-        <div class="day-row ${isToday ? 'today' : ''}">
-          <div class="day-body">
-            <div class="day-label">${fmtDayLabel(d, TODAY)}</div>
-            <div class="day-sub">${fmtShortDate(d)} · ${bucket.count} txn${bucket.count === 1 ? '' : 's'}</div>
+        <div class="day-block ${hasTxns ? '' : 'no-txns'}" data-date="${d}">
+          <div class="day-row ${isToday ? 'today' : ''} ${hasTxns ? '' : 'no-txns'}">
+            <span class="day-chevron">▸</span>
+            <div class="day-body">
+              <div class="day-label">${fmtDayLabel(d, TODAY)}</div>
+              <div class="day-sub">${fmtShortDate(d)} · ${bucket.count} txn${bucket.count === 1 ? '' : 's'}</div>
+            </div>
+            <div class="day-bar-wrap">
+              <div class="day-bar-fill ${over ? 'over' : ''}" style="width:${barW}%"></div>
+            </div>
+            <span class="day-amount ${isZero ? 'zero' : ''} ${over ? 'over' : ''}">${bucket.total.toLocaleString()} HUF</span>
           </div>
-          <div class="day-bar-wrap">
-            <div class="day-bar-fill ${over ? 'over' : ''}" style="width:${barW}%"></div>
-          </div>
-          <span class="day-amount ${isZero ? 'zero' : ''} ${over ? 'over' : ''}">${bucket.total.toLocaleString()} HUF</span>
+          ${hasTxns ? `<div class="day-txns">${renderTxnRows(bucket.rows)}</div>` : ''}
         </div>
       `;
     }).join('');
+
+    // wire up expand/collapse
+    list.querySelectorAll('.day-block').forEach(block => {
+      if (block.classList.contains('no-txns')) return;
+      const row = block.querySelector('.day-row');
+      row.addEventListener('click', () => {
+        block.classList.toggle('expanded');
+      });
+    });
   }
 
   async function loadAll() {
