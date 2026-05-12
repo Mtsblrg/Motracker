@@ -17,6 +17,8 @@
     --text-faint: #6a6e76;
     --accent: #c4f060;
     --accent-dim: #9bb84c;
+    --spend: #f0a955;
+    --spend-dim: #ba7517;
     --danger: #f0796e;
     --danger-bg: rgba(240, 121, 110, 0.15);
     --radius: 14px;
@@ -106,7 +108,7 @@
   .list-item:active { background: var(--surface-hover); }
   .list-item.optimistic { opacity: 0.55; }
 
-  /* shared long-press visual states (applies to .list-item AND .food-entry) */
+  /* shared long-press visual states */
   .long-pressable {
     -webkit-user-select: none; user-select: none;
     -webkit-touch-callout: none;
@@ -133,10 +135,12 @@
     padding: 6px 14px; border-radius: 6px; font-size: 13px;
     cursor: pointer;
   }
-  /* compact confirm bar for food entries (smaller card) */
-  .food-entry .delete-confirm-text { font-size: 13px; }
-  .food-entry .delete-confirm-delete { padding: 5px 12px; font-size: 12px; }
-  .food-entry .delete-confirm-cancel { padding: 5px 10px; font-size: 12px; }
+  .food-entry .delete-confirm-text,
+  .spend-entry .delete-confirm-text { font-size: 13px; }
+  .food-entry .delete-confirm-delete,
+  .spend-entry .delete-confirm-delete { padding: 5px 12px; font-size: 12px; }
+  .food-entry .delete-confirm-cancel,
+  .spend-entry .delete-confirm-cancel { padding: 5px 10px; font-size: 12px; }
 
   .checkbox {
     width: 20px; height: 20px; border: 1.5px solid var(--text-faint);
@@ -173,7 +177,6 @@
   .tag-fusi     { background: rgba(212, 83, 126, 0.12); color: #ed93b1; border-color: rgba(212, 83, 126, 0.3); }
   .tag-default  { background: var(--border); color: var(--text-dim); border-color: var(--border-strong); }
 
-  /* table-route tags for captures list */
   .route {
     font-size: 10px; padding: 2px 8px; border-radius: 10px;
     font-weight: 500; letter-spacing: 0.3px;
@@ -206,6 +209,8 @@
   .source-chat     .source-icon { color: #afa9ec; }
   .source-gmail    .source-icon { color: #f09595; }
   .source-manual   .source-icon { color: var(--text-dim); }
+  .source-revolut  .source-icon { color: #afa9ec; }
+  .source-erste    .source-icon { color: #f0a955; }
 
   .list-item.done .item-text {
     color: var(--text-faint); text-decoration: line-through; text-decoration-color: var(--text-faint);
@@ -246,9 +251,11 @@
     font-size: 15px; font-weight: 600; color: var(--accent);
     font-variant-numeric: tabular-nums;
   }
+  .metric-pct.spend-color { color: var(--spend); }
   .metric-pct.over { color: var(--danger); }
   .bar { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; position: relative; }
   .bar-fill { height: 100%; background: var(--accent); border-radius: 4px; transition: width 0.4s ease-out; }
+  .bar-fill.spend-color { background: var(--spend); }
   .bar-fill.over { background: var(--danger); }
   .metric-foot {
     margin-top: 10px; font-size: 13px; color: var(--text-dim);
@@ -257,9 +264,9 @@
   }
   .metric-foot .goal-value { color: var(--text); font-weight: 500; }
   .metric-foot .remaining { color: var(--accent-dim); font-weight: 500; }
+  .metric-foot .remaining.spend-color { color: var(--spend-dim); }
   .metric-foot .remaining.over { color: var(--danger); }
 
-  /* expandable detail under a metric */
   .metric-detail {
     margin-top: 14px; padding-top: 12px;
     border-top: 1px solid var(--border);
@@ -280,6 +287,7 @@
     margin-top: 10px; display: flex; flex-direction: column; gap: 8px;
   }
   .metric-detail-body.hidden { display: none; }
+
   .food-entry {
     padding: 8px 10px;
     background: rgba(196, 240, 96, 0.04);
@@ -300,6 +308,36 @@
     word-wrap: break-word;
   }
 
+  .spend-entry {
+    padding: 8px 10px;
+    background: rgba(240, 169, 85, 0.04);
+    border: 1px solid rgba(240, 169, 85, 0.12);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.1s, transform 0.5s ease-out;
+  }
+  .spend-entry:active { background: rgba(240, 169, 85, 0.08); }
+  .spend-entry-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 4px;
+  }
+  .spend-entry-time { font-size: 12px; color: var(--text-faint); }
+  .spend-entry-amount { font-size: 12px; color: var(--spend); font-weight: 500; }
+  .spend-entry-merchant {
+    font-size: 13px; color: var(--text); line-height: 1.4;
+    word-wrap: break-word;
+  }
+  .spend-entry-source {
+    display: inline-block;
+    font-size: 10px; padding: 1px 6px;
+    border-radius: 8px; margin-left: 6px;
+    border: 1px solid var(--border-strong);
+    color: var(--text-faint);
+    vertical-align: middle;
+  }
+  .spend-entry-source.src-revolut { color: #afa9ec; border-color: rgba(127, 119, 221, 0.3); }
+  .spend-entry-source.src-erste   { color: #f0a955; border-color: rgba(186, 117, 23, 0.3); }
+
   /* captures list (TODAY) */
   .captures-list { background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius); overflow: hidden; }
   .captures-list.hidden { display: none; }
@@ -318,7 +356,6 @@
     font-size: 11px; color: var(--text-faint); margin-top: 2px;
   }
 
-  /* TOAST — supports plain + action variants */
   .toast {
     position: fixed; bottom: 24px; left: 50%;
     transform: translateX(-50%) translateY(80px);
@@ -369,6 +406,7 @@
   <h1>motracker</h1>
   <div class="header-right">
     <span class="date" id="date">—</span>
+    <a class="nav" href="./spend.html">spend →</a>
     <a class="nav" href="./capture.html">captures →</a>
   </div>
 </header>
@@ -454,15 +492,20 @@
     chat:    { icon: '◇', label: 'chat'    },
     gmail:   { icon: '✉', label: 'gmail'   },
     manual:  { icon: '•', label: 'manual'  },
+    revolut: { icon: '€', label: 'revolut' },
+    erste:   { icon: '€', label: 'erste'   },
   };
 
   const LONG_PRESS_MS = 500;
   const UNDO_TIMEOUT_MS = 5000;
 
   function todayISO() {
-    const d = new Date();
-    const bpDate = new Date(d.getTime() + 2 * 3600 * 1000);
-    return bpDate.toISOString().slice(0, 10);
+    // Use Intl for DST-safe Budapest local date
+    const fmt = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Europe/Budapest',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+    });
+    return fmt.format(new Date());
   }
   const TODAY = todayISO();
 
@@ -474,16 +517,16 @@
   let CALORIES_TODAY = 0;
   let SPEND_TODAY = 0;
   let FOOD_ENTRIES = []; // [{id, created_at, value, note}]
+  let SPEND_ENTRIES = []; // [{id, created_at, value, note(merchant), source}]
   let RECENT_CAPTURES = []; // grouped { entry, routes:[{table, route_label}] }
   let GOALS = { calories: 2500, spend: 10000 };
 
   let CAPTURES_OPEN = false;
   let FOOD_OPEN = false;
+  let SPEND_OPEN = false;
 
   // ============================================
   // DELETABLE REGISTRY
-  // Each entry: how to find a row by id, re-render its container, and label it.
-  // Adding a new long-pressable type = add a new entry here.
   // ============================================
   const DELETABLES = {
     tasks: {
@@ -496,13 +539,21 @@
       render: () => renderShopping(),
       label:  row => row.item,
     },
-    metrics: {
+    metrics_calories: {
+      table: 'metrics',
       array: () => FOOD_ENTRIES,
       render: () => renderCaloriesMetric(),
       label:  row => row.note || '(no description)',
-      // metrics deletion also affects the calories total
-      afterRemove: row => { CALORIES_TODAY -= +row.value; },
+      afterRemove:  row => { CALORIES_TODAY -= +row.value; },
       afterRestore: row => { CALORIES_TODAY += +row.value; },
+    },
+    metrics_spend: {
+      table: 'metrics',
+      array: () => SPEND_ENTRIES,
+      render: () => renderSpendMetric(),
+      label:  row => row.note || '(no merchant)',
+      afterRemove:  row => { SPEND_TODAY -= +row.value; },
+      afterRestore: row => { SPEND_TODAY += +row.value; },
     },
   };
 
@@ -566,17 +617,16 @@
   }
 
   async function loadMetrics() {
-    const url = `metrics?date=eq.${TODAY}&metric_type=in.(calories,spend)&select=id,metric_type,value,note,created_at&order=created_at.desc`;
+    const url = `metrics?date=eq.${TODAY}&metric_type=in.(calories,spend)&select=id,metric_type,value,note,source,created_at&order=created_at.desc`;
     const rows = await sbGet(url);
     CALORIES_TODAY = rows.filter(r => r.metric_type === "calories").reduce((s, r) => s + +r.value, 0);
     SPEND_TODAY    = rows.filter(r => r.metric_type === "spend").reduce((s, r) => s + +r.value, 0);
     FOOD_ENTRIES   = rows.filter(r => r.metric_type === "calories")
                          .map(r => ({ id: r.id, created_at: r.created_at, value: +r.value, note: r.note }));
+    SPEND_ENTRIES  = rows.filter(r => r.metric_type === "spend")
+                         .map(r => ({ id: r.id, created_at: r.created_at, value: +r.value, note: r.note, source: r.source }));
   }
 
-  // Load today's captures = entries + their routed siblings via entry_id FK.
-  // Each sibling table has an entry_id column linking back to entries(id).
-  // Clean join, no timing guesswork.
   async function loadRecentCaptures() {
     const todayStart = `${TODAY}T00:00:00`;
     const todayEnd   = `${TODAY}T23:59:59`;
@@ -596,7 +646,6 @@
       sbGet(`metrics?${idFilter}&select=entry_id,metric_type`),
     ]);
 
-    // Build lookup: entryId -> Set of route labels
     const routesByEntry = new Map();
     function add(entryId, label) {
       if (!routesByEntry.has(entryId)) routesByEntry.set(entryId, new Set());
@@ -690,7 +739,6 @@
     return `<span class="source source-${escapeHtml(source)}"><span class="source-icon">${s.icon}</span>${escapeHtml(s.label)}</span>`;
   }
 
-  // Route pill for "recent captures" — distinct vocab from regular tags
   function routePill(label) {
     const lcLabel = String(label).toLowerCase();
     const KNOWN = ['tasks', 'shopping', 'calories', 'spend', 'tobacco', 'note', 'reminder', 'entry', 'multi'];
@@ -801,7 +849,7 @@
         .slice()
         .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
         .map(f => `
-          <div class="food-entry long-pressable" data-type="metrics" data-id="${f.id}">
+          <div class="food-entry long-pressable" data-type="metrics_calories" data-id="${f.id}">
             <div class="food-entry-head">
               <span class="food-entry-time">${fmtTime(f.created_at)}</span>
               <span class="food-entry-kcal">${f.value.toLocaleString()} kcal</span>
@@ -835,7 +883,6 @@
       ${detailHtml}
     `;
 
-    // Wire up the food expand toggle
     const toggle = document.getElementById('foodToggle');
     if (toggle) {
       toggle.addEventListener('click', () => {
@@ -847,28 +894,75 @@
   }
 
   function renderSpendMetric() {
+    const el = document.getElementById('spendMetric');
     const current = SPEND_TODAY;
     const goal = GOALS.spend;
     const pct = goal > 0 ? Math.round((current / goal) * 100) : 0;
     const over = pct > 100;
     const barWidth = Math.min(pct, 100);
-    document.getElementById('spendMetric').innerHTML = `
+
+    let detailHtml = '';
+    if (SPEND_ENTRIES.length > 0) {
+      const count = SPEND_ENTRIES.length;
+      const label = `${count} transaction${count === 1 ? '' : 's'}`;
+      const bodyClass = SPEND_OPEN ? '' : 'hidden';
+      const chevClass = SPEND_OPEN ? 'open' : '';
+      const spendRows = SPEND_ENTRIES
+        .slice()
+        .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+        .map(s => {
+          const src = (s.source || '').toLowerCase();
+          const srcLabel = src === 'revolut' ? 'revolut' : src === 'erste' ? 'erste' : (src || 'manual');
+          const srcCls = src === 'revolut' ? 'src-revolut' : src === 'erste' ? 'src-erste' : '';
+          return `
+          <div class="spend-entry long-pressable" data-type="metrics_spend" data-id="${s.id}">
+            <div class="spend-entry-head">
+              <span class="spend-entry-time">${fmtTime(s.created_at)}</span>
+              <span class="spend-entry-amount">${s.value.toLocaleString()} HUF</span>
+            </div>
+            <div class="spend-entry-merchant">${escapeHtml(s.note || '(no merchant)')}<span class="spend-entry-source ${srcCls}">${escapeHtml(srcLabel)}</span></div>
+          </div>
+        `;
+        }).join('');
+      detailHtml = `
+        <div class="metric-detail">
+          <div class="metric-detail-toggle" id="spendToggle">
+            <span class="label">${label}</span>
+            <span class="chevron ${chevClass}" id="spendChevron">▾</span>
+          </div>
+          <div class="metric-detail-body ${bodyClass}" id="spendBody">
+            ${spendRows}
+          </div>
+        </div>
+      `;
+    }
+
+    el.innerHTML = `
       <div class="metric-head">
         <span class="metric-current">${current.toLocaleString()}<span class="unit">HUF</span></span>
-        <span class="metric-pct ${over ? 'over' : ''}">${pct}%</span>
+        <span class="metric-pct ${over ? 'over' : 'spend-color'}">${pct}%</span>
       </div>
-      <div class="bar"><div class="bar-fill ${over ? 'over' : ''}" style="width:${barWidth}%"></div></div>
+      <div class="bar"><div class="bar-fill ${over ? 'over' : 'spend-color'}" style="width:${barWidth}%"></div></div>
       <div class="metric-foot">
         <span>goal <span class="goal-value">${goal.toLocaleString()} HUF</span></span>
-        <span class="remaining ${over ? 'over' : ''}">${over ? `+${(current - goal).toLocaleString()} over` : `${(goal - current).toLocaleString()} left`}</span>
+        <span class="remaining ${over ? 'over' : 'spend-color'}">${over ? `+${(current - goal).toLocaleString()} over` : `${(goal - current).toLocaleString()} left`}</span>
       </div>
+      ${detailHtml}
     `;
+
+    const toggle = document.getElementById('spendToggle');
+    if (toggle) {
+      toggle.addEventListener('click', () => {
+        SPEND_OPEN = !SPEND_OPEN;
+        document.getElementById('spendBody').classList.toggle('hidden', !SPEND_OPEN);
+        document.getElementById('spendChevron').classList.toggle('open', SPEND_OPEN);
+      });
+    }
   }
 
   function renderRecentCaptures() {
     const list = document.getElementById('capturesList');
     const countEl = document.getElementById('capturesCount');
-    const chevron = document.getElementById('capturesChevron');
     const n = RECENT_CAPTURES.length;
 
     if (n === 0) {
@@ -942,7 +1036,6 @@
         if (opts.onAction) opts.onAction();
         hideToast();
       });
-      // Animate progress bar
       const prog = t.querySelector('.toast-progress');
       requestAnimationFrame(() => {
         prog.style.transition = `transform ${opts.duration || UNDO_TIMEOUT_MS}ms linear`;
@@ -969,7 +1062,6 @@
   // ============================================
   // PENDING DELETE — one at a time
   // ============================================
-  // {table, row, timer, committed}
   let PENDING_DELETE = null;
 
   function commitPendingDelete() {
@@ -979,33 +1071,31 @@
     if (p.timer) clearTimeout(p.timer);
     if (p.committed) return;
     p.committed = true;
-    // Fire the DELETE; if it fails, row stays gone locally but we re-fetch
-    sbDelete(`${p.table}?id=eq.${p.row.id}`).catch(err => {
+    const spec = DELETABLES[p.type];
+    const tbl = spec.table || p.type;
+    sbDelete(`${tbl}?id=eq.${p.row.id}`).catch(err => {
       console.error('Delete failed, refetching:', err);
       showToast(`✕ delete failed: ${err.message}`, { error: true });
       loadAll();
     });
   }
 
-  function startDelete(table, id) {
-    // If there's already a pending delete, commit it immediately
+  function startDelete(type, id) {
     if (PENDING_DELETE) commitPendingDelete();
 
-    const spec = DELETABLES[table];
-    if (!spec) { console.warn('unknown deletable type:', table); return; }
+    const spec = DELETABLES[type];
+    if (!spec) { console.warn('unknown deletable type:', type); return; }
     const arr = spec.array();
     const idx = arr.findIndex(r => r.id === id);
     if (idx === -1) return;
     const row = arr[idx];
 
-    // Optimistic remove from in-memory state + re-render
     arr.splice(idx, 1);
     if (spec.afterRemove) spec.afterRemove(row);
     spec.render();
 
-    // Stash the pending delete + restore-index so undo can put it back
     PENDING_DELETE = {
-      table, row, originalIndex: idx, committed: false,
+      type, row, originalIndex: idx, committed: false,
       timer: setTimeout(() => commitPendingDelete(), UNDO_TIMEOUT_MS),
     };
 
@@ -1019,8 +1109,7 @@
         const p = PENDING_DELETE;
         if (!p || p.committed) return;
         clearTimeout(p.timer);
-        // Re-insert at original index
-        const s = DELETABLES[p.table];
+        const s = DELETABLES[p.type];
         const a = s.array();
         a.splice(Math.min(p.originalIndex, a.length), 0, p.row);
         if (s.afterRestore) s.afterRestore(p.row);
@@ -1033,9 +1122,9 @@
   // ============================================
   // INTERACTIONS — click (toggle done) + long-press (delete)
   // ============================================
-  let pressState = null; // { item, table, id, timer, startX, startY, fired }
-  let ARMED = null; // { table, id, item, originalHTML } — row awaiting delete confirmation
-  const MOVE_THRESHOLD = 10; // pixels — cancel press if finger moves more
+  let pressState = null;
+  let ARMED = null;
+  const MOVE_THRESHOLD = 10;
 
   function getEventPos(e) {
     if (e.touches && e.touches[0]) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
@@ -1043,19 +1132,18 @@
   }
 
   function startPress(e, item) {
-    if (PENDING_DELETE) return; // don't start a new press while one is pending
+    if (PENDING_DELETE) return;
     const id = +item.dataset.id;
-    const table = item.dataset.type;
+    const type = item.dataset.type;
     const pos = getEventPos(e);
     pressState = {
-      item, table, id, fired: false,
+      item, type, id, fired: false,
       startX: pos.x, startY: pos.y,
       timer: setTimeout(() => {
         if (!pressState) return;
         pressState.fired = true;
-        // haptic if available
         if (navigator.vibrate) navigator.vibrate(30);
-        armRow(item, table, id);
+        armRow(item, type, id);
         if (pressState.item) pressState.item.classList.remove('pressing');
       }, LONG_PRESS_MS),
     };
@@ -1071,8 +1159,8 @@
     return fired;
   }
 
-  function armRow(item, table, id) {
-    ARMED = { table, id, item, originalHTML: item.innerHTML };
+  function armRow(item, type, id) {
+    ARMED = { type, id, item, originalHTML: item.innerHTML };
     item.classList.add('armed');
     item.innerHTML = `
       <div class="delete-confirm-bar">
@@ -1084,24 +1172,22 @@
 
   function clearArmed() {
     if (!ARMED) return;
-    const { table } = ARMED;
+    const { type } = ARMED;
     ARMED = null;
-    const spec = DELETABLES[table];
+    const spec = DELETABLES[type];
     if (spec) spec.render();
   }
 
-  // Use pointer events where available, fall back to touch + mouse
   document.addEventListener('pointerdown', e => {
     if (e.target.closest('.toast')) return;
     if (e.target.closest('.source')) return;
-    // food entries live inside the foodToggle's sibling — don't start press on the toggle itself
     if (e.target.closest('#foodToggle')) return;
+    if (e.target.closest('#spendToggle')) return;
     const target = e.target.closest('.long-pressable');
     if (!target) return;
-    if (target.classList.contains('armed')) return; // confirm bar handles via click
+    if (target.classList.contains('armed')) return;
     if (ARMED) {
       clearArmed();
-      // Get fresh DOM reference after re-render
       const fresh = document.querySelector(
         `.long-pressable[data-type="${target.dataset.type}"][data-id="${target.dataset.id}"]`);
       if (!fresh) return;
@@ -1125,19 +1211,15 @@
 
   document.addEventListener('scroll', () => { if (ARMED) clearArmed(); }, true);
 
-  // Suppress the native context menu when a long press fires (so Android/iOS
-  // don't try to pop their own selection menu after our 500ms hold).
   document.addEventListener('contextmenu', e => {
     if (e.target.closest('.long-pressable')) e.preventDefault();
   });
 
-  // CLICK = armed confirm buttons, or toggle done (only if long-press didn't fire)
   document.addEventListener('click', async e => {
     if (e.target.closest('.toast')) return;
 
-    // Armed confirm bar
     if (e.target.classList.contains('delete-confirm-delete')) {
-      if (ARMED) { const { table, id } = ARMED; ARMED = null; startDelete(table, id); }
+      if (ARMED) { const { type, id } = ARMED; ARMED = null; startDelete(type, id); }
       return;
     }
     if (e.target.classList.contains('delete-confirm-cancel') ||
@@ -1145,37 +1227,35 @@
       clearArmed();
       return;
     }
-    if (ARMED) return; // tap inside armed row but not on a button — ignore
+    if (ARMED) return;
 
     if (e.target.closest('.source')) return;
-    // Food-toggle clicks are handled by the toggle's own listener
     if (e.target.closest('#foodToggle')) return;
+    if (e.target.closest('#spendToggle')) return;
 
     const item = e.target.closest('.list-item');
     if (!item) return;
     if (item.classList.contains('optimistic')) return;
-    // If we just fired a long-press, swallow the synthetic click
     if (pressState === null && item.classList.contains('pressing')) return;
 
     const id = +item.dataset.id;
-    const table = item.dataset.type;
-    // Only tasks/shopping have a done-toggle. Metrics (food entries) have no click action.
-    if (table !== 'tasks' && table !== 'shopping') return;
-    const arr = table === 'tasks' ? TASKS : SHOPPING;
+    const type = item.dataset.type;
+    if (type !== 'tasks' && type !== 'shopping') return;
+    const arr = type === 'tasks' ? TASKS : SHOPPING;
     const row = arr.find(r => r.id === id);
     if (!row) return;
 
     const newDone = !row.done;
     row.done = newDone;
     row.done_at = newDone ? new Date().toISOString() : null;
-    if (table === 'tasks') renderTasks(); else renderShopping();
+    if (type === 'tasks') renderTasks(); else renderShopping();
 
     try {
-      await sbPatch(`${table}?id=eq.${id}`, { done: newDone, done_at: row.done_at });
+      await sbPatch(`${type}?id=eq.${id}`, { done: newDone, done_at: row.done_at });
     } catch (err) {
       row.done = !newDone;
       row.done_at = null;
-      if (table === 'tasks') renderTasks(); else renderShopping();
+      if (type === 'tasks') renderTasks(); else renderShopping();
       showToast(`✕ couldn't save: ${err.message}`, { error: true });
     }
   });
@@ -1204,7 +1284,6 @@
     const text = captureInput.value.trim();
     if (!text) return;
 
-    // Commit any pending delete before firing capture (so re-fetch is clean)
     if (PENDING_DELETE) commitPendingDelete();
 
     captureBtn.disabled = true;
@@ -1235,12 +1314,12 @@
     }
   }
 
-  // Commit pending delete before unload (best effort; uses keepalive)
   window.addEventListener('beforeunload', () => {
     if (PENDING_DELETE && !PENDING_DELETE.committed) {
-      // Best-effort fire & forget — uses keepalive so the request survives navigation
       try {
-        fetch(`${REST}/${PENDING_DELETE.table}?id=eq.${PENDING_DELETE.row.id}`, {
+        const spec = DELETABLES[PENDING_DELETE.type];
+        const tbl = spec.table || PENDING_DELETE.type;
+        fetch(`${REST}/${tbl}?id=eq.${PENDING_DELETE.row.id}`, {
           method: 'DELETE',
           headers: HEADERS,
           keepalive: true,

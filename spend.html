@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#0d0f12" />
+<title>Motracker — spend</title>
+<style>
+  :root {
+    --bg: #0d0f12;
+    --surface: #161a20;
+    --surface-hover: #1c2026;
+    --border: #22262c;
+    --border-strong: #2a2d33;
+    --text: #e8e8e8;
+    --text-dim: #a8acb4;
+    --text-faint: #6a6e76;
+    --accent: #c4f060;
+    --spend: #f0a955;
+    --spend-dim: #ba7517;
+    --danger: #f0796e;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { background: var(--bg); }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    color: var(--text);
+    padding: 16px 16px 80px;
+    max-width: 460px;
+    margin: 0 auto;
+    font-size: 15px;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+
+  header {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 18px; padding: 4px 4px 0;
+  }
+  header h1 { font-size: 20px; font-weight: 600; letter-spacing: -0.5px; color: var(--spend); }
+  .header-right { display: flex; align-items: baseline; gap: 14px; }
+  .header-right .nav { font-size: 13px; color: var(--text-faint); text-decoration: none; }
+  .header-right .nav:hover { color: var(--accent); }
+
+  section { margin-bottom: 22px; }
+  .section-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    padding: 0 4px 8px;
+    -webkit-user-select: none; user-select: none;
+  }
+  .section-head h2 {
+    font-size: 11px; font-weight: 600; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--text-dim);
+  }
+  .section-head .total { font-size: 13px; color: var(--spend); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border-strong);
+    border-radius: var(--radius); padding: 16px;
+  }
+
+  /* TODAY summary card */
+  .today-head {
+    display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px;
+  }
+  .today-amount {
+    font-size: 22px; font-weight: 600; color: var(--text);
+    letter-spacing: -0.3px; font-variant-numeric: tabular-nums;
+  }
+  .today-amount .unit {
+    font-size: 13px; font-weight: 400; color: var(--text-dim); margin-left: 4px;
+  }
+  .today-pct {
+    font-size: 15px; font-weight: 600; color: var(--spend);
+    font-variant-numeric: tabular-nums;
+  }
+  .today-pct.over { color: var(--danger); }
+  .bar { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+  .bar-fill { height: 100%; background: var(--spend); border-radius: 4px; transition: width 0.4s ease-out; }
+  .bar-fill.over { background: var(--danger); }
+  .today-foot {
+    margin-top: 10px; font-size: 13px; color: var(--text-dim);
+    display: flex; justify-content: space-between;
+    font-variant-numeric: tabular-nums;
+  }
+  .today-foot .goal-value { color: var(--text); font-weight: 500; }
+  .today-foot .remaining { color: var(--spend-dim); font-weight: 500; }
+  .today-foot .remaining.over { color: var(--danger); }
+
+  /* Today's transactions list */
+  .txn-list {
+    background: var(--surface); border: 1px solid var(--border-strong);
+    border-radius: var(--radius); overflow: hidden;
+  }
+  .txn-row {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;
+  }
+  .txn-row:last-child { border-bottom: none; }
+  .txn-body { flex: 1; min-width: 0; }
+  .txn-merchant {
+    font-size: 14px; color: var(--text); line-height: 1.3;
+    word-wrap: break-word;
+  }
+  .txn-meta {
+    margin-top: 4px; font-size: 11px; color: var(--text-faint);
+    display: flex; gap: 8px; align-items: center;
+  }
+  .txn-source {
+    font-size: 10px; padding: 1px 6px;
+    border-radius: 8px;
+    border: 1px solid var(--border-strong);
+    color: var(--text-faint);
+  }
+  .txn-source.src-revolut { color: #afa9ec; border-color: rgba(127, 119, 221, 0.3); }
+  .txn-source.src-erste   { color: #f0a955; border-color: rgba(186, 117, 23, 0.3); }
+  .txn-amount {
+    font-size: 14px; color: var(--spend); font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0; white-space: nowrap;
+  }
+
+  /* 7-day rows */
+  .day-row {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  }
+  .day-row:last-child { border-bottom: none; }
+  .day-row.today { background: rgba(240, 169, 85, 0.04); }
+  .day-body { flex: 1; min-width: 0; }
+  .day-label {
+    font-size: 14px; color: var(--text); font-weight: 500;
+  }
+  .day-sub {
+    font-size: 11px; color: var(--text-faint); margin-top: 2px;
+  }
+  .day-bar-wrap {
+    flex: 0 0 80px;
+    height: 4px; background: var(--border);
+    border-radius: 2px; overflow: hidden;
+  }
+  .day-bar-fill {
+    height: 100%; background: var(--spend);
+    border-radius: 2px;
+  }
+  .day-bar-fill.over { background: var(--danger); }
+  .day-amount {
+    font-size: 14px; color: var(--text); font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0; white-space: nowrap; min-width: 80px; text-align: right;
+  }
+  .day-amount.zero { color: var(--text-faint); font-weight: 400; }
+  .day-amount.over { color: var(--danger); }
+
+  .loading {
+    padding: 18px 16px; text-align: center; font-size: 13px;
+    color: var(--text-faint);
+  }
+  .empty {
+    padding: 18px 16px; text-align: center; font-size: 13px;
+    color: var(--text-faint); font-style: italic;
+  }
+  .error-msg {
+    padding: 14px 16px; font-size: 13px; color: var(--danger);
+    background: rgba(240, 121, 110, 0.08); border: 1px solid rgba(240, 121, 110, 0.25);
+    border-radius: var(--radius);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>spend</h1>
+  <div class="header-right">
+    <a class="nav" href="./">← today</a>
+    <a class="nav" href="./capture.html">captures →</a>
+  </div>
+</header>
+
+<section>
+  <div class="section-head">
+    <h2>today</h2>
+    <span class="total" id="todayTotal"></span>
+  </div>
+  <div class="card" id="todayCard">
+    <div class="loading">loading…</div>
+  </div>
+</section>
+
+<section>
+  <div class="section-head">
+    <h2>transactions</h2>
+    <span class="total" id="txnCount"></span>
+  </div>
+  <div class="txn-list" id="txnList">
+    <div class="loading">loading…</div>
+  </div>
+</section>
+
+<section>
+  <div class="section-head">
+    <h2>last 7 days</h2>
+    <span class="total" id="weekTotal"></span>
+  </div>
+  <div class="txn-list" id="weekList">
+    <div class="loading">loading…</div>
+  </div>
+</section>
+
+<script>
+  const SUPABASE_URL = "https://fwqhomgawlgicqiqqqhw.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ3cWhvbWdhd2xnaWNxaXFxcWh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyMTE1NDYsImV4cCI6MjA5Mjc4NzU0Nn0.LF82rWM0rX5FKY0Qo5Vsym_VWgV2reL_U8LkHbfWVHI";
+  const REST = `${SUPABASE_URL}/rest/v1`;
+  const HEADERS = {
+    "apikey": SUPABASE_ANON_KEY,
+    "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+    "Content-Type": "application/json",
+  };
+
+  function escapeHtml(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[c]));
+  }
+
+  function bpDateISO(d = new Date()) {
+    const fmt = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Europe/Budapest',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+    });
+    return fmt.format(d);
+  }
+
+  function fmtTime(iso) {
+    const d = new Date(iso);
+    return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Budapest' });
+  }
+
+  function fmtShortDate(iso) {
+    const d = new Date(iso + 'T00:00:00');
+    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }).toLowerCase();
+  }
+
+  function fmtDayLabel(iso, todayISO) {
+    const today = new Date(todayISO + 'T00:00:00');
+    const d = new Date(iso + 'T00:00:00');
+    const diff = Math.round((today - d) / 86400000);
+    if (diff === 0) return 'today';
+    if (diff === 1) return 'yesterday';
+    return d.toLocaleDateString('en-GB', { weekday: 'long' }).toLowerCase();
+  }
+
+  async function sbGet(path) {
+    const res = await fetch(`${REST}/${path}`, { headers: HEADERS });
+    if (!res.ok) throw new Error(`GET ${path}: ${res.status}`);
+    return res.json();
+  }
+
+  const TODAY = bpDateISO();
+
+  // 7-day window: today and previous 6 days
+  function get7DayWindow() {
+    const days = [];
+    const todayDate = new Date(TODAY + 'T00:00:00');
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(todayDate.getTime() - i * 86400000);
+      days.push(d.toISOString().slice(0, 10));
+    }
+    return days; // [today, today-1, ..., today-6]
+  }
+
+  async function loadGoal() {
+    try {
+      const rows = await sbGet(`settings?key=eq.daily_spend_target_huf`);
+      return rows.length > 0 ? +rows[0].value : 10000;
+    } catch {
+      return 10000;
+    }
+  }
+
+  async function loadSpend7d() {
+    const days = get7DayWindow();
+    const from = days[days.length - 1]; // oldest
+    const url = `metrics?metric_type=eq.spend&date=gte.${from}&date=lte.${TODAY}` +
+                `&select=id,date,value,note,source,created_at&order=created_at.asc`;
+    return await sbGet(url);
+  }
+
+  function renderTodayCard(todayRows, goal) {
+    const total = todayRows.reduce((s, r) => s + +r.value, 0);
+    const pct = goal > 0 ? Math.round((total / goal) * 100) : 0;
+    const over = pct > 100;
+    const barWidth = Math.min(pct, 100);
+
+    document.getElementById('todayTotal').textContent = `${total.toLocaleString()} HUF`;
+
+    document.getElementById('todayCard').innerHTML = `
+      <div class="today-head">
+        <span class="today-amount">${total.toLocaleString()}<span class="unit">HUF</span></span>
+        <span class="today-pct ${over ? 'over' : ''}">${pct}%</span>
+      </div>
+      <div class="bar"><div class="bar-fill ${over ? 'over' : ''}" style="width:${barWidth}%"></div></div>
+      <div class="today-foot">
+        <span>goal <span class="goal-value">${goal.toLocaleString()} HUF</span></span>
+        <span class="remaining ${over ? 'over' : ''}">${over ? `+${(total - goal).toLocaleString()} over` : `${(goal - total).toLocaleString()} left`}</span>
+      </div>
+    `;
+  }
+
+  function renderTxnList(todayRows) {
+    const list = document.getElementById('txnList');
+    const countEl = document.getElementById('txnCount');
+
+    if (todayRows.length === 0) {
+      countEl.textContent = '0 today';
+      list.innerHTML = '<div class="empty">no transactions today</div>';
+      return;
+    }
+
+    countEl.textContent = `${todayRows.length} today`;
+
+    // Show newest first
+    const sorted = todayRows.slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    list.innerHTML = sorted.map(r => {
+      const src = (r.source || '').toLowerCase();
+      const srcLabel = src === 'revolut' ? 'revolut' : src === 'erste' ? 'erste' : (src || 'manual');
+      const srcCls = src === 'revolut' ? 'src-revolut' : src === 'erste' ? 'src-erste' : '';
+      return `
+        <div class="txn-row">
+          <div class="txn-body">
+            <div class="txn-merchant">${escapeHtml(r.note || '(no merchant)')}</div>
+            <div class="txn-meta">
+              <span>${fmtTime(r.created_at)}</span>
+              <span class="txn-source ${srcCls}">${escapeHtml(srcLabel)}</span>
+            </div>
+          </div>
+          <span class="txn-amount">${(+r.value).toLocaleString()} HUF</span>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function renderWeek(allRows, goal) {
+    const days = get7DayWindow(); // newest to oldest
+    const totalsByDate = new Map();
+    days.forEach(d => totalsByDate.set(d, { total: 0, count: 0 }));
+    allRows.forEach(r => {
+      if (totalsByDate.has(r.date)) {
+        const bucket = totalsByDate.get(r.date);
+        bucket.total += +r.value;
+        bucket.count += 1;
+      }
+    });
+
+    const weekTotal = Array.from(totalsByDate.values()).reduce((s, b) => s + b.total, 0);
+    document.getElementById('weekTotal').textContent = `${weekTotal.toLocaleString()} HUF`;
+
+    const maxTotal = Math.max(goal, ...Array.from(totalsByDate.values()).map(b => b.total));
+
+    const list = document.getElementById('weekList');
+    list.innerHTML = days.map(d => {
+      const bucket = totalsByDate.get(d);
+      const isToday = d === TODAY;
+      const over = bucket.total > goal;
+      const isZero = bucket.total === 0;
+      const barW = maxTotal > 0 ? Math.round((bucket.total / maxTotal) * 100) : 0;
+      return `
+        <div class="day-row ${isToday ? 'today' : ''}">
+          <div class="day-body">
+            <div class="day-label">${fmtDayLabel(d, TODAY)}</div>
+            <div class="day-sub">${fmtShortDate(d)} · ${bucket.count} txn${bucket.count === 1 ? '' : 's'}</div>
+          </div>
+          <div class="day-bar-wrap">
+            <div class="day-bar-fill ${over ? 'over' : ''}" style="width:${barW}%"></div>
+          </div>
+          <span class="day-amount ${isZero ? 'zero' : ''} ${over ? 'over' : ''}">${bucket.total.toLocaleString()} HUF</span>
+        </div>
+      `;
+    }).join('');
+  }
+
+  async function loadAll() {
+    try {
+      const [goal, allRows] = await Promise.all([loadGoal(), loadSpend7d()]);
+      const todayRows = allRows.filter(r => r.date === TODAY);
+      renderTodayCard(todayRows, goal);
+      renderTxnList(todayRows);
+      renderWeek(allRows, goal);
+    } catch (e) {
+      console.error(e);
+      document.getElementById('todayCard').innerHTML =
+        `<div class="error-msg">load failed: ${escapeHtml(e.message)}</div>`;
+      document.getElementById('txnList').innerHTML = '';
+      document.getElementById('weekList').innerHTML = '';
+    }
+  }
+
+  loadAll();
+</script>
+
+</body>
+</html>
