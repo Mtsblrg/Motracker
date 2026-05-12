@@ -2,247 +2,450 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-<meta name="theme-color" content="#0f172a" />
-<title>Motracker — Capture</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#0d0f12" />
+<title>Motracker — captures</title>
 <style>
   :root {
-    --bg: #0f172a;
-    --panel: #1e293b;
-    --text: #f1f5f9;
-    --muted: #94a3b8;
-    --accent: #38bdf8;
-    --ok: #4ade80;
-    --err: #f87171;
-    --border: #334155;
+    --bg: #0d0f12;
+    --surface: #161a20;
+    --surface-hover: #1c2026;
+    --border: #22262c;
+    --border-strong: #2a2d33;
+    --text: #e8e8e8;
+    --text-dim: #a8acb4;
+    --text-faint: #6a6e76;
+    --accent: #c4f060;
+    --accent-dim: #9bb84c;
+    --danger: #f0796e;
+    --radius: 14px;
   }
-  * { box-sizing: border-box; }
-  html, body {
-    margin: 0; padding: 0;
-    background: var(--bg); color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { background: var(--bg); }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    color: var(--text);
+    padding: 16px 16px 80px;
+    max-width: 460px;
+    margin: 0 auto;
+    font-size: 15px;
+    line-height: 1.5;
     min-height: 100vh;
   }
-  body {
-    display: flex; flex-direction: column;
-    padding: 16px;
-    max-width: 600px; margin: 0 auto;
-  }
+
   header {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 18px; padding: 4px 4px 0;
+  }
+  header h1 { font-size: 20px; font-weight: 600; letter-spacing: -0.5px; color: var(--accent); }
+  .header-right { display: flex; align-items: baseline; gap: 14px; }
+  .header-right .nav { font-size: 13px; color: var(--text-faint); text-decoration: none; }
+  .header-right .nav:hover { color: var(--accent); }
+
+  .capture {
+    background: var(--surface); border: 1px solid var(--border-strong);
+    border-radius: var(--radius); padding: 12px 14px; margin-bottom: 18px;
+    transition: border-color 0.15s;
+  }
+  .capture:focus-within { border-color: var(--accent); }
+  .capture textarea {
+    width: 100%; border: none; background: transparent; color: var(--text);
+    font-family: inherit; font-size: 15px; line-height: 1.5; resize: none;
+    outline: none; min-height: 22px; max-height: 200px; overflow-y: auto;
+  }
+  .capture textarea::placeholder { color: var(--text-faint); }
+  .capture-bar {
     display: flex; justify-content: space-between; align-items: center;
-    margin-bottom: 16px;
+    margin-top: 10px; height: 0; overflow: hidden; transition: height 0.2s;
   }
-  h1 { font-size: 20px; font-weight: 600; margin: 0; }
-  .nav a {
-    color: var(--muted); text-decoration: none; margin-left: 12px; font-size: 14px;
+  .capture:focus-within .capture-bar,
+  .capture.has-text .capture-bar { height: 32px; }
+  .capture-bar .hint { font-size: 12px; color: var(--text-faint); }
+  .capture-bar button {
+    background: var(--accent); color: var(--bg); border: none; border-radius: 8px;
+    padding: 6px 14px; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
   }
-  .nav a:hover { color: var(--accent); }
+  .capture-bar button:disabled {
+    background: var(--border-strong); color: var(--text-faint); cursor: not-allowed;
+  }
 
-  textarea {
-    width: 100%;
-    min-height: 140px;
-    padding: 14px;
-    font-size: 17px;
-    background: var(--panel);
-    color: var(--text);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    resize: vertical;
-    font-family: inherit;
+  .date-group { margin-bottom: 18px; }
+  .date-head {
+    font-size: 11px; font-weight: 600; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--text-dim);
+    padding: 0 4px 8px;
   }
-  textarea:focus { outline: 2px solid var(--accent); border-color: var(--accent); }
+  .captures-list {
+    background: var(--surface); border: 1px solid var(--border-strong);
+    border-radius: var(--radius); overflow: hidden;
+  }
+  .capture-row {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
+  }
+  .capture-row:last-child { border-bottom: none; }
+  .capture-row-body { flex: 1; min-width: 0; }
+  .capture-row-text {
+    font-size: 13px; line-height: 1.4;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .capture-row-meta {
+    font-size: 11px; color: var(--text-faint); margin-top: 2px;
+  }
 
-  button {
-    margin-top: 12px;
-    width: 100%;
-    padding: 14px;
-    background: var(--accent);
-    color: #0f172a;
-    font-size: 16px;
-    font-weight: 600;
-    border: none;
-    border-radius: 12px;
-    cursor: pointer;
+  .route {
+    font-size: 10px; padding: 2px 8px; border-radius: 10px;
+    font-weight: 500; letter-spacing: 0.3px;
+    border: 1px solid transparent; white-space: nowrap; flex-shrink: 0;
   }
-  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .route-tasks    { background: rgba(55, 138, 221, 0.12); color: #85b7eb; border-color: rgba(55, 138, 221, 0.25); }
+  .route-shopping { background: rgba(29, 158, 117, 0.12); color: #5dcaa5; border-color: rgba(29, 158, 117, 0.25); }
+  .route-calories { background: rgba(196, 240, 96, 0.12); color: #c4f060; border-color: rgba(196, 240, 96, 0.25); }
+  .route-spend    { background: rgba(186, 117, 23, 0.12); color: #f0a955; border-color: rgba(186, 117, 23, 0.3); }
+  .route-tobacco  { background: rgba(216, 90, 48, 0.12); color: #f0997b; border-color: rgba(216, 90, 48, 0.3); }
+  .route-metric   { background: rgba(168, 172, 180, 0.12); color: var(--text-dim); border-color: var(--border-strong); }
+  .route-note     { background: rgba(127, 119, 221, 0.15); color: #afa9ec; border-color: rgba(127, 119, 221, 0.3); }
+  .route-reminder { background: rgba(212, 83, 126, 0.12); color: #ed93b1; border-color: rgba(212, 83, 126, 0.3); }
+  .route-entry    { background: var(--border); color: var(--text-faint); border-color: var(--border-strong); }
+  .route-multi    { background: rgba(168, 172, 180, 0.12); color: var(--text-dim); border-color: var(--border-strong); }
 
-  .hint {
-    color: var(--muted);
-    font-size: 13px;
-    margin-top: 8px;
-    line-height: 1.5;
+  .loading {
+    padding: 18px 16px; text-align: center; font-size: 13px;
+    color: var(--text-faint);
   }
+  .empty {
+    padding: 18px 16px; text-align: center; font-size: 13px;
+    color: var(--text-faint); font-style: italic;
+  }
+  .error-msg {
+    padding: 14px 16px; font-size: 13px; color: var(--danger);
+    background: rgba(240, 121, 110, 0.08); border: 1px solid rgba(240, 121, 110, 0.25);
+    border-radius: var(--radius);
+  }
+
+  .load-more {
+    text-align: center; padding: 14px;
+    color: var(--text-faint); font-size: 13px; cursor: pointer;
+    -webkit-user-select: none; user-select: none;
+  }
+  .load-more:hover { color: var(--accent); }
+  .load-more.loading-state { color: var(--text-faint); cursor: default; }
 
   .toast {
-    position: fixed;
-    bottom: 20px; left: 16px; right: 16px;
-    max-width: 568px; margin: 0 auto;
-    padding: 14px 16px;
-    border-radius: 12px;
-    background: var(--panel);
-    border-left: 4px solid var(--ok);
-    font-size: 15px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
-    animation: slideUp 0.3s ease;
+    position: fixed; bottom: 24px; left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--accent); color: var(--bg);
+    padding: 12px 20px; border-radius: 12px;
+    font-size: 14px; font-weight: 500;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    opacity: 0; transition: all 0.3s ease-out;
+    z-index: 100; max-width: 360px; text-align: center;
   }
-  .toast.error { border-left-color: var(--err); }
-  .toast .meta { color: var(--muted); font-size: 12px; margin-top: 4px; }
-  @keyframes slideUp {
-    from { transform: translateY(20px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
-  }
-
-  .recent {
-    margin-top: 24px;
-  }
-  .recent h2 {
-    font-size: 13px; color: var(--muted); text-transform: uppercase;
-    letter-spacing: 1px; margin: 0 0 8px;
-  }
-  .recent-item {
-    padding: 10px 12px;
-    background: var(--panel);
-    border-radius: 8px;
-    margin-bottom: 6px;
-    font-size: 14px;
-  }
-  .recent-item .time { color: var(--muted); font-size: 11px; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast.error { background: var(--danger); color: #fff; }
 </style>
 </head>
 <body>
 
 <header>
-  <h1>📥 Capture</h1>
-  <nav class="nav">
-    <a href="./">Today</a>
-    <a href="./history.html">History</a>
-  </nav>
+  <h1>captures</h1>
+  <div class="header-right">
+    <a class="nav" href="./">← today</a>
+  </div>
 </header>
 
-<textarea
-  id="capture-input"
-  placeholder="e.g. coffee 800, smoked 2, buy detergent, call dentist tomorrow"
-  autofocus
-></textarea>
-
-<button id="capture-btn">Log it</button>
-
-<div class="hint">
-  Type anything: spends (HUF), food (cal), tobacco, shopping, tasks, reminders, notes.<br>
-  Multiple items in one line work. Claude parses + files it.
+<div class="capture" id="capture">
+  <textarea id="captureInput" rows="1" placeholder="capture anything..."></textarea>
+  <div class="capture-bar">
+    <span class="hint">enter to send · shift+enter for newline</span>
+    <button id="captureBtn" disabled>send</button>
+  </div>
 </div>
 
-<div class="recent" id="recent">
-  <h2>Recent</h2>
-  <div id="recent-list"></div>
+<div id="groupsContainer">
+  <div class="loading">loading…</div>
 </div>
+
+<div class="load-more" id="loadMore" style="display:none;">load older</div>
+
+<div class="toast" id="toast"></div>
 
 <script>
-// ============ CONFIG ============
-const SUPABASE_URL = "https://fwqhomgawlgicqiqqqhw.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ3cWhvbWdhd2xnaWNxaXFxcWh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyMTE1NDYsImV4cCI6MjA5Mjc4NzU0Nn0.LF82rWM0rX5FKY0Qo5Vsym_VWgV2reL_U8LkHbfWVHI";
-const CAPTURE_FN_URL = `${SUPABASE_URL}/functions/v1/capture`;
+  // ============================================
+  // CONFIG
+  // ============================================
+  const SUPABASE_URL = "https://fwqhomgawlgicqiqqqhw.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ3cWhvbWdhd2xnaWNxaXFxcWh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyMTE1NDYsImV4cCI6MjA5Mjc4NzU0Nn0.LF82rWM0rX5FKY0Qo5Vsym_VWgV2reL_U8LkHbfWVHI";
+  const CAPTURE_FN_URL = `${SUPABASE_URL}/functions/v1/capture`;
+  const REST = `${SUPABASE_URL}/rest/v1`;
 
-// ============ ELEMENTS ============
-const input = document.getElementById("capture-input");
-const btn = document.getElementById("capture-btn");
-const recentList = document.getElementById("recent-list");
+  const HEADERS = {
+    "apikey": SUPABASE_ANON_KEY,
+    "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+    "Content-Type": "application/json",
+  };
 
-// ============ CAPTURE ============
-btn.addEventListener("click", capture);
-input.addEventListener("keydown", (e) => {
-  if ((e.metaKey || e.ctrlKey) && e.key === "Enter") capture();
-});
+  const PAGE_SIZE = 50;
+  const MATCH_WINDOW_MS = 3000;
 
-async function capture() {
-  const text = input.value.trim();
-  if (!text) return;
+  // ============================================
+  // STATE
+  // ============================================
+  let CAPTURES = []; // [{ entry, routes: [{label}] }]
+  let OLDEST_LOADED = null; // ISO string of oldest entry created_at
+  let HAS_MORE = true;
 
-  btn.disabled = true;
-  btn.textContent = "Parsing...";
+  // ============================================
+  // HELPERS
+  // ============================================
+  function escapeHtml(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[c]));
+  }
 
-  try {
-    const res = await fetch(CAPTURE_FN_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
-      },
-      body: JSON.stringify({ text }),
+  function fmtTime(iso) {
+    const d = new Date(iso);
+    return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Budapest' });
+  }
+
+  function bpDateOnly(iso) {
+    const d = new Date(iso);
+    // Convert to Budapest by shifting by GMT+2
+    const bp = new Date(d.getTime() + 2 * 3600 * 1000);
+    return bp.toISOString().slice(0, 10);
+  }
+
+  function todayBP() {
+    return bpDateOnly(new Date().toISOString());
+  }
+
+  function fmtDateHeader(iso) {
+    const today = todayBP();
+    const tomorrow = new Date(new Date(today + 'T00:00:00').getTime() + 86400000)
+      .toISOString().slice(0, 10);
+    const yesterday = new Date(new Date(today + 'T00:00:00').getTime() - 86400000)
+      .toISOString().slice(0, 10);
+    const dayName = new Date(iso + 'T00:00:00')
+      .toLocaleDateString('en-GB', { weekday: 'long' }).toLowerCase();
+    const shortDate = new Date(iso + 'T00:00:00')
+      .toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }).toLowerCase();
+    if (iso === today)     return `today · ${shortDate}`;
+    if (iso === yesterday) return `yesterday · ${shortDate}`;
+    return `${dayName} · ${shortDate}`;
+  }
+
+  function routePill(label) {
+    const lcLabel = String(label).toLowerCase();
+    const KNOWN = ['tasks', 'shopping', 'calories', 'spend', 'tobacco', 'note', 'reminder', 'entry', 'multi'];
+    const cls = KNOWN.includes(lcLabel) ? `route-${lcLabel}` : 'route-metric';
+    return `<span class="route ${cls}">${escapeHtml(lcLabel)}</span>`;
+  }
+
+  async function sbGet(path) {
+    const res = await fetch(`${REST}/${path}`, { headers: HEADERS });
+    if (!res.ok) throw new Error(`GET ${path}: ${res.status}`);
+    return res.json();
+  }
+
+  // ============================================
+  // FETCH — paged
+  // ============================================
+  async function fetchPage(beforeISO = null) {
+    let entriesQ = `entries?select=*&order=created_at.desc&limit=${PAGE_SIZE}`;
+    if (beforeISO) entriesQ += `&created_at=lt.${beforeISO}`;
+    const entries = await sbGet(entriesQ);
+    if (entries.length === 0) return [];
+
+    // Time window for sibling lookup — from oldest entry in this batch to newest
+    const oldest = entries[entries.length - 1].created_at;
+    const newest = entries[0].created_at;
+    // Expand each side by MATCH_WINDOW_MS so writes near edge are matched
+    const fromISO = new Date(new Date(oldest).getTime() - MATCH_WINDOW_MS).toISOString();
+    const toISO   = new Date(new Date(newest).getTime() + MATCH_WINDOW_MS).toISOString();
+    const range = `created_at=gte.${fromISO}&created_at=lte.${toISO}`;
+
+    const [tasksRows, shoppingRows, notesRows, remindersRows, metricsRows] = await Promise.all([
+      sbGet(`tasks?${range}&select=id,created_at`),
+      sbGet(`shopping?${range}&select=id,created_at`),
+      sbGet(`notes?${range}&select=id,created_at`),
+      sbGet(`reminders?${range}&select=id,created_at`),
+      sbGet(`metrics?${range}&select=id,created_at,metric_type`),
+    ]);
+
+    return entries.map(e => {
+      const t0 = new Date(e.created_at).getTime();
+      const within = (row) => Math.abs(new Date(row.created_at).getTime() - t0) <= MATCH_WINDOW_MS;
+      const routes = [];
+      if (tasksRows.some(within))     routes.push({ label: 'tasks' });
+      if (shoppingRows.some(within))  routes.push({ label: 'shopping' });
+      if (notesRows.some(within))     routes.push({ label: 'note' });
+      if (remindersRows.some(within)) routes.push({ label: 'reminder' });
+      const matchedMetrics = metricsRows.filter(within);
+      const seen = new Set();
+      matchedMetrics.forEach(m => {
+        if (seen.has(m.metric_type)) return;
+        seen.add(m.metric_type);
+        routes.push({ label: m.metric_type });
+      });
+      return { entry: e, routes };
+    });
+  }
+
+  async function loadInitial() {
+    try {
+      const page = await fetchPage();
+      CAPTURES = page;
+      HAS_MORE = page.length === PAGE_SIZE;
+      OLDEST_LOADED = page.length > 0 ? page[page.length - 1].entry.created_at : null;
+      render();
+    } catch (e) {
+      document.getElementById('groupsContainer').innerHTML =
+        `<div class="error-msg">load failed: ${escapeHtml(e.message)}</div>`;
+    }
+  }
+
+  async function loadMore() {
+    if (!HAS_MORE || !OLDEST_LOADED) return;
+    const btn = document.getElementById('loadMore');
+    btn.classList.add('loading-state');
+    btn.textContent = 'loading…';
+    try {
+      const page = await fetchPage(OLDEST_LOADED);
+      CAPTURES = CAPTURES.concat(page);
+      HAS_MORE = page.length === PAGE_SIZE;
+      OLDEST_LOADED = page.length > 0 ? page[page.length - 1].entry.created_at : OLDEST_LOADED;
+      render();
+    } catch (e) {
+      showToast(`✕ load failed: ${e.message}`, true);
+    } finally {
+      btn.classList.remove('loading-state');
+      btn.textContent = 'load older';
+    }
+  }
+
+  // ============================================
+  // RENDER
+  // ============================================
+  function render() {
+    const container = document.getElementById('groupsContainer');
+    if (CAPTURES.length === 0) {
+      container.innerHTML = '<div class="empty">no captures yet</div>';
+      document.getElementById('loadMore').style.display = 'none';
+      return;
+    }
+
+    // Group by Budapest date
+    const groups = new Map(); // dateISO -> rows[]
+    CAPTURES.forEach(c => {
+      const d = bpDateOnly(c.entry.created_at);
+      if (!groups.has(d)) groups.set(d, []);
+      groups.get(d).push(c);
     });
 
-    const data = await res.json();
-
-    if (!res.ok || !data.ok) {
-      showToast(`❌ ${data.error || "Failed"}`, true);
-      console.error(data);
-    } else {
-      showToast(data.summary || "Logged.");
-      input.value = "";
-      loadRecent();
+    // Render groups in order (already sorted by created_at desc)
+    let html = '';
+    for (const [date, rows] of groups) {
+      html += `<div class="date-group">`;
+      html += `<div class="date-head">${fmtDateHeader(date)}</div>`;
+      html += `<div class="captures-list">`;
+      html += rows.map(c => {
+        const time = fmtTime(c.entry.created_at);
+        const labels = c.routes.length === 0
+          ? ['entry']
+          : c.routes.map(r => r.label);
+        const routeStr = labels.join(', ');
+        const pill = labels.length === 1
+          ? routePill(labels[0])
+          : routePill('multi');
+        return `
+          <div class="capture-row">
+            <div class="capture-row-body">
+              <div class="capture-row-text">${escapeHtml(c.entry.raw_text)}</div>
+              <div class="capture-row-meta">${time} · → ${escapeHtml(routeStr)}</div>
+            </div>
+            ${pill}
+          </div>
+        `;
+      }).join('');
+      html += `</div></div>`;
     }
-  } catch (e) {
-    showToast(`❌ Network error: ${e.message}`, true);
-  } finally {
-    btn.disabled = false;
-    btn.textContent = "Log it";
-    input.focus();
+
+    container.innerHTML = html;
+    document.getElementById('loadMore').style.display = HAS_MORE ? 'block' : 'none';
   }
-}
 
-function showToast(msg, isError = false) {
-  const existing = document.querySelector(".toast");
-  if (existing) existing.remove();
+  // ============================================
+  // TOAST
+  // ============================================
+  function showToast(msg, isError = false) {
+    const t = document.getElementById('toast');
+    t.className = 'toast' + (isError ? ' error' : '');
+    t.textContent = msg;
+    t.classList.add('show');
+    if (window._toastTimer) clearTimeout(window._toastTimer);
+    window._toastTimer = setTimeout(() => {
+      t.classList.remove('show');
+    }, 2400);
+  }
 
-  const t = document.createElement("div");
-  t.className = "toast" + (isError ? " error" : "");
-  t.textContent = msg;
-  document.body.appendChild(t);
-  setTimeout(() => t.remove(), 4000);
-}
+  // ============================================
+  // CAPTURE INPUT
+  // ============================================
+  const captureBox = document.getElementById('capture');
+  const captureInput = document.getElementById('captureInput');
+  const captureBtn = document.getElementById('captureBtn');
 
-// ============ RECENT ENTRIES ============
-async function loadRecent() {
-  try {
-    const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/entries?select=raw_text,created_at&order=created_at.desc&limit=5`,
-      {
-        headers: {
-          "apikey": SUPABASE_ANON_KEY,
-          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
-        },
+  function autosize() {
+    captureInput.style.height = 'auto';
+    captureInput.style.height = Math.min(captureInput.scrollHeight, 200) + 'px';
+  }
+  captureInput.addEventListener('input', () => {
+    autosize();
+    const has = captureInput.value.trim().length > 0;
+    captureBtn.disabled = !has;
+    captureBox.classList.toggle('has-text', has);
+  });
+  captureInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+  });
+  captureBtn.addEventListener('click', send);
+
+  async function send() {
+    const text = captureInput.value.trim();
+    if (!text) return;
+    captureBtn.disabled = true;
+    captureBtn.textContent = "…";
+
+    try {
+      const res = await fetch(CAPTURE_FN_URL, {
+        method: "POST",
+        headers: { ...HEADERS },
+        body: JSON.stringify({ text }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        showToast(`✕ ${data.error || "capture failed"}`, true);
+        console.error(data);
+        return;
       }
-    );
-    if (!res.ok) return;
-    const rows = await res.json();
-    recentList.innerHTML = rows.map(r => `
-      <div class="recent-item">
-        ${escapeHtml(r.raw_text)}
-        <div class="time">${formatTime(r.created_at)}</div>
-      </div>
-    `).join("");
-  } catch (e) {
-    // silent fail; not critical
+      captureInput.value = "";
+      autosize();
+      captureBox.classList.remove('has-text');
+      showToast(data.summary || "✓ logged");
+      loadInitial(); // reset to first page so new capture appears at top
+    } catch (e) {
+      showToast(`✕ network: ${e.message}`, true);
+    } finally {
+      captureBtn.disabled = false;
+      captureBtn.textContent = "send";
+    }
   }
-}
 
-function escapeHtml(s) {
-  return s.replace(/[&<>"']/g, c => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
-  }[c]));
-}
+  document.getElementById('loadMore').addEventListener('click', loadMore);
 
-function formatTime(iso) {
-  const d = new Date(iso);
-  const now = new Date();
-  const diffMin = Math.floor((now - d) / 60000);
-  if (diffMin < 1) return "just now";
-  if (diffMin < 60) return `${diffMin}m ago`;
-  if (diffMin < 1440) return `${Math.floor(diffMin / 60)}h ago`;
-  return d.toLocaleString("en-GB", { timeZone: "Europe/Budapest" });
-}
-
-loadRecent();
+  loadInitial();
 </script>
 
 </body>
