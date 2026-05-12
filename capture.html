@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<meta name="theme-color" content="#0f172a" />
+<title>Motracker — Capture</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --panel: #1e293b;
+    --text: #f1f5f9;
+    --muted: #94a3b8;
+    --accent: #38bdf8;
+    --ok: #4ade80;
+    --err: #f87171;
+    --border: #334155;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    min-height: 100vh;
+  }
+  body {
+    display: flex; flex-direction: column;
+    padding: 16px;
+    max-width: 600px; margin: 0 auto;
+  }
+  header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 16px;
+  }
+  h1 { font-size: 20px; font-weight: 600; margin: 0; }
+  .nav a {
+    color: var(--muted); text-decoration: none; margin-left: 12px; font-size: 14px;
+  }
+  .nav a:hover { color: var(--accent); }
+
+  textarea {
+    width: 100%;
+    min-height: 140px;
+    padding: 14px;
+    font-size: 17px;
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    resize: vertical;
+    font-family: inherit;
+  }
+  textarea:focus { outline: 2px solid var(--accent); border-color: var(--accent); }
+
+  button {
+    margin-top: 12px;
+    width: 100%;
+    padding: 14px;
+    background: var(--accent);
+    color: #0f172a;
+    font-size: 16px;
+    font-weight: 600;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+  }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .hint {
+    color: var(--muted);
+    font-size: 13px;
+    margin-top: 8px;
+    line-height: 1.5;
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 20px; left: 16px; right: 16px;
+    max-width: 568px; margin: 0 auto;
+    padding: 14px 16px;
+    border-radius: 12px;
+    background: var(--panel);
+    border-left: 4px solid var(--ok);
+    font-size: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    animation: slideUp 0.3s ease;
+  }
+  .toast.error { border-left-color: var(--err); }
+  .toast .meta { color: var(--muted); font-size: 12px; margin-top: 4px; }
+  @keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  .recent {
+    margin-top: 24px;
+  }
+  .recent h2 {
+    font-size: 13px; color: var(--muted); text-transform: uppercase;
+    letter-spacing: 1px; margin: 0 0 8px;
+  }
+  .recent-item {
+    padding: 10px 12px;
+    background: var(--panel);
+    border-radius: 8px;
+    margin-bottom: 6px;
+    font-size: 14px;
+  }
+  .recent-item .time { color: var(--muted); font-size: 11px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📥 Capture</h1>
+  <nav class="nav">
+    <a href="./">Today</a>
+    <a href="./history.html">History</a>
+  </nav>
+</header>
+
+<textarea
+  id="capture-input"
+  placeholder="e.g. coffee 800, smoked 2, buy detergent, call dentist tomorrow"
+  autofocus
+></textarea>
+
+<button id="capture-btn">Log it</button>
+
+<div class="hint">
+  Type anything: spends (HUF), food (cal), tobacco, shopping, tasks, reminders, notes.<br>
+  Multiple items in one line work. Claude parses + files it.
+</div>
+
+<div class="recent" id="recent">
+  <h2>Recent</h2>
+  <div id="recent-list"></div>
+</div>
+
+<script>
+// ============ CONFIG ============
+const SUPABASE_URL = "https://fwqhomgawlgicqiqqqhw.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_kv4yP6HjULXzFd085xnyQQ_q98QohZs";
+const CAPTURE_FN_URL = `${SUPABASE_URL}/functions/v1/capture`;
+
+// ============ ELEMENTS ============
+const input = document.getElementById("capture-input");
+const btn = document.getElementById("capture-btn");
+const recentList = document.getElementById("recent-list");
+
+// ============ CAPTURE ============
+btn.addEventListener("click", capture);
+input.addEventListener("keydown", (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key === "Enter") capture();
+});
+
+async function capture() {
+  const text = input.value.trim();
+  if (!text) return;
+
+  btn.disabled = true;
+  btn.textContent = "Parsing...";
+
+  try {
+    const res = await fetch(CAPTURE_FN_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+      body: JSON.stringify({ text }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data.ok) {
+      showToast(`❌ ${data.error || "Failed"}`, true);
+      console.error(data);
+    } else {
+      showToast(data.summary || "Logged.");
+      input.value = "";
+      loadRecent();
+    }
+  } catch (e) {
+    showToast(`❌ Network error: ${e.message}`, true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Log it";
+    input.focus();
+  }
+}
+
+function showToast(msg, isError = false) {
+  const existing = document.querySelector(".toast");
+  if (existing) existing.remove();
+
+  const t = document.createElement("div");
+  t.className = "toast" + (isError ? " error" : "");
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 4000);
+}
+
+// ============ RECENT ENTRIES ============
+async function loadRecent() {
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/entries?select=raw_text,captured_at&order=captured_at.desc&limit=5`,
+      {
+        headers: {
+          "apikey": SUPABASE_ANON_KEY,
+          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+      }
+    );
+    if (!res.ok) return;
+    const rows = await res.json();
+    recentList.innerHTML = rows.map(r => `
+      <div class="recent-item">
+        ${escapeHtml(r.raw_text)}
+        <div class="time">${formatTime(r.captured_at)}</div>
+      </div>
+    `).join("");
+  } catch (e) {
+    // silent fail; not critical
+  }
+}
+
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[c]));
+}
+
+function formatTime(iso) {
+  const d = new Date(iso);
+  const now = new Date();
+  const diffMin = Math.floor((now - d) / 60000);
+  if (diffMin < 1) return "just now";
+  if (diffMin < 60) return `${diffMin}m ago`;
+  if (diffMin < 1440) return `${Math.floor(diffMin / 60)}h ago`;
+  return d.toLocaleString("en-GB", { timeZone: "Europe/Budapest" });
+}
+
+loadRecent();
+</script>
+
+</body>
+</html>
