@@ -60,7 +60,6 @@
     border-radius: var(--radius); padding: 16px;
   }
 
-  /* TODAY summary card */
   .today-head {
     display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px;
   }
@@ -88,7 +87,6 @@
   .today-foot .remaining { color: var(--spend-dim); font-weight: 500; }
   .today-foot .remaining.over { color: var(--danger); }
 
-  /* Today's transactions list */
   .txn-list {
     background: var(--surface); border: 1px solid var(--border-strong);
     border-radius: var(--radius); overflow: hidden;
@@ -122,7 +120,6 @@
     flex-shrink: 0; white-space: nowrap;
   }
 
-  /* 7-day rows */
   .day-block { border-bottom: 1px solid var(--border); }
   .day-block:last-child { border-bottom: none; }
   .day-row {
@@ -169,7 +166,6 @@
   .day-amount.zero { color: var(--text-faint); font-weight: 400; }
   .day-amount.over { color: var(--danger); }
 
-  /* Day txn dropdown */
   .day-txns {
     display: none;
     background: rgba(0, 0, 0, 0.15);
@@ -204,6 +200,7 @@
   <h1>spend</h1>
   <div class="header-right">
     <a class="nav" href="./">← today</a>
+    <a class="nav" href="./budget.html">budget</a>
     <a class="nav" href="./capture.html">captures →</a>
   </div>
 </header>
@@ -289,7 +286,6 @@
 
   const TODAY = bpDateISO();
 
-  // 7-day window: today and previous 6 days
   function get7DayWindow() {
     const days = [];
     const todayDate = new Date(TODAY + 'T00:00:00');
@@ -297,7 +293,7 @@
       const d = new Date(todayDate.getTime() - i * 86400000);
       days.push(d.toISOString().slice(0, 10));
     }
-    return days; // [today, today-1, ..., today-6]
+    return days;
   }
 
   async function loadGoal() {
@@ -311,7 +307,7 @@
 
   async function loadSpend7d() {
     const days = get7DayWindow();
-    const from = days[days.length - 1]; // oldest
+    const from = days[days.length - 1];
     const url = `metrics?metric_type=eq.spend&date=gte.${from}&date=lte.${TODAY}` +
                 `&select=id,date,value,note,source,created_at&order=created_at.asc`;
     return await sbGet(url);
@@ -339,7 +335,6 @@
   }
 
   function renderTxnRows(rows) {
-    // newest first
     const sorted = rows.slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     return sorted.map(r => {
       const src = (r.source || '').toLowerCase();
@@ -363,19 +358,17 @@
   function renderTxnList(todayRows) {
     const list = document.getElementById('txnList');
     const countEl = document.getElementById('txnCount');
-
     if (todayRows.length === 0) {
       countEl.textContent = '0 today';
       list.innerHTML = '<div class="empty">no transactions today</div>';
       return;
     }
-
     countEl.textContent = `${todayRows.length} today`;
     list.innerHTML = renderTxnRows(todayRows);
   }
 
   function renderWeek(allRows, goal) {
-    const days = get7DayWindow(); // newest to oldest
+    const days = get7DayWindow();
     const rowsByDate = new Map();
     days.forEach(d => rowsByDate.set(d, []));
     allRows.forEach(r => {
@@ -422,7 +415,6 @@
       `;
     }).join('');
 
-    // wire up expand/collapse
     list.querySelectorAll('.day-block').forEach(block => {
       if (block.classList.contains('no-txns')) return;
       const row = block.querySelector('.day-row');
