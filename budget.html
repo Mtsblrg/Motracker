@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#0d0f12" />
+<title>Motracker — budget</title>
+<style>
+  :root {
+    --bg: #0d0f12;
+    --surface: #161a20;
+    --surface-hover: #1c2026;
+    --border: #22262c;
+    --border-strong: #2a2d33;
+    --text: #e8e8e8;
+    --text-dim: #a8acb4;
+    --text-faint: #6a6e76;
+    --accent: #c4f060;
+    --spend: #f0a955;
+    --spend-dim: #ba7517;
+    --danger: #f0796e;
+    --travel: #afa9ec;
+    --travel-dim: #7f77dd;
+    --recur: #85b7eb;
+    --recur-dim: #378add;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { background: var(--bg); }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    color: var(--text);
+    padding: 16px 16px 80px;
+    max-width: 460px;
+    margin: 0 auto;
+    font-size: 15px;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+
+  header {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 18px; padding: 4px 4px 0;
+  }
+  header h1 { font-size: 20px; font-weight: 600; letter-spacing: -0.5px; color: var(--spend); }
+  .header-right { display: flex; align-items: baseline; gap: 14px; }
+  .header-right .nav { font-size: 13px; color: var(--text-faint); text-decoration: none; }
+  .header-right .nav:hover { color: var(--accent); }
+
+  section { margin-bottom: 22px; }
+  .section-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    padding: 0 4px 8px;
+    -webkit-user-select: none; user-select: none;
+  }
+  .section-head h2 {
+    font-size: 11px; font-weight: 600; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--text-dim);
+  }
+  .section-head .total { font-size: 13px; color: var(--spend); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .section-head .total.travel { color: var(--travel); }
+  .section-head .total.recur { color: var(--recur); }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border-strong);
+    border-radius: var(--radius); padding: 16px;
+  }
+
+  /* CYCLE summary card (mimics today card) */
+  .cycle-head {
+    display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;
+  }
+  .cycle-amount {
+    font-size: 22px; font-weight: 600; color: var(--text);
+    letter-spacing: -0.3px; font-variant-numeric: tabular-nums;
+  }
+  .cycle-amount .unit {
+    font-size: 13px; font-weight: 400; color: var(--text-dim); margin-left: 4px;
+  }
+  .cycle-amount.over { color: var(--danger); }
+  .cycle-pct {
+    font-size: 15px; font-weight: 600; color: var(--spend);
+    font-variant-numeric: tabular-nums;
+  }
+  .cycle-pct.over { color: var(--danger); }
+  .cycle-sub {
+    font-size: 12px; color: var(--text-faint); margin-bottom: 12px;
+  }
+  .bar { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; position: relative; }
+  .bar-fill { height: 100%; background: var(--spend); border-radius: 4px; transition: width 0.4s ease-out; }
+  .bar-fill.over { background: var(--danger); }
+  .bar-marker {
+    position: absolute; top: -2px; bottom: -2px; width: 2px;
+    background: var(--accent); border-radius: 1px;
+  }
+  .cycle-foot {
+    margin-top: 10px; font-size: 13px; color: var(--text-dim);
+    display: flex; justify-content: space-between;
+    font-variant-numeric: tabular-nums;
+  }
+  .cycle-foot .label { color: var(--text-faint); font-size: 12px; }
+  .cycle-foot .value { color: var(--text); font-weight: 500; }
+  .cycle-foot .value.over { color: var(--danger); }
+
+  /* daily allowance hero — the main question */
+  .daily-hero {
+    margin-top: 14px; padding-top: 14px;
+    border-top: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+  }
+  .daily-hero-body { flex: 1; min-width: 0; }
+  .daily-hero-label {
+    font-size: 11px; color: var(--text-dim); letter-spacing: 1.5px;
+    text-transform: uppercase; margin-bottom: 4px;
+  }
+  .daily-hero-amount {
+    font-size: 26px; font-weight: 700; color: var(--accent);
+    letter-spacing: -0.5px; font-variant-numeric: tabular-nums;
+  }
+  .daily-hero-amount.over { color: var(--danger); }
+  .daily-hero-amount .unit {
+    font-size: 14px; font-weight: 400; color: var(--text-dim); margin-left: 4px;
+  }
+  .daily-hero-pace {
+    text-align: right; font-size: 12px;
+    color: var(--text-faint); line-height: 1.5;
+  }
+  .daily-hero-pace .pace-actual { color: var(--spend); font-weight: 600; }
+
+  /* 4-up summary cards */
+  .summary-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    margin-bottom: 18px;
+  }
+  .summary-card {
+    background: var(--surface); border: 1px solid var(--border-strong);
+    border-radius: 10px; padding: 12px 14px;
+  }
+  .summary-label {
+    font-size: 11px; color: var(--text-dim); letter-spacing: 1.5px;
+    text-transform: uppercase; margin-bottom: 6px;
+  }
+  .summary-value {
+    font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums;
+    color: var(--text); letter-spacing: -0.2px;
+  }
+  .summary-value.spend  { color: var(--spend); }
+  .summary-value.travel { color: var(--travel); }
+  .summary-value.recur  { color: var(--recur); }
+  .summary-value.over   { color: var(--danger); }
+  .summary-value .unit {
+    font-size: 11px; font-weight: 400; color: var(--text-dim); margin-left: 3px;
+  }
+  .summary-sub {
+    font-size: 11px; color: var(--text-faint); margin-top: 2px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* category accordion (mimics index food/spend pattern) */
+  .accordion-list {
+    background: var(--surface); border: 1px solid var(--border-strong);
+    border-radius: var(--radius); overflow: hidden;
+  }
+  .cat-block { border-bottom: 1px solid var(--border); }
+  .cat-block:last-child { border-bottom: none; }
+  .cat-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    -webkit-user-select: none; user-select: none;
+  }
+  .cat-row:active { background: var(--surface-hover); }
+  .cat-row.no-txns { cursor: default; }
+  .cat-chevron {
+    flex-shrink: 0; width: 14px; font-size: 10px;
+    color: var(--text-faint); text-align: center;
+    transition: transform 0.2s ease;
+  }
+  .cat-block.expanded .cat-chevron { transform: rotate(90deg); }
+  .cat-block.no-txns .cat-chevron { opacity: 0; }
+  .cat-body { flex: 1; min-width: 0; }
+  .cat-label {
+    font-size: 14px; color: var(--text); font-weight: 500;
+    text-transform: capitalize;
+  }
+  .cat-sub {
+    font-size: 11px; color: var(--text-faint); margin-top: 2px;
+  }
+  .cat-bar-wrap {
+    flex: 0 0 60px;
+    height: 4px; background: var(--border);
+    border-radius: 2px; overflow: hidden;
+  }
+  .cat-bar-fill {
+    height: 100%; background: var(--spend); border-radius: 2px;
+  }
+  .cat-bar-fill.travel { background: var(--travel); }
+  .cat-bar-fill.recur  { background: var(--recur); }
+  .cat-amount {
+    font-size: 14px; color: var(--text); font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0; white-space: nowrap; min-width: 70px; text-align: right;
+  }
+
+  /* nested txn dropdown */
+  .cat-txns {
+    display: none;
+    background: rgba(0, 0, 0, 0.15);
+    border-top: 1px solid var(--border);
+  }
+  .cat-block.expanded .cat-txns { display: block; }
+  .txn-row {
+    padding: 10px 14px 10px 32px;
+    border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;
+  }
+  .txn-row:last-child { border-bottom: none; }
+  .txn-body { flex: 1; min-width: 0; }
+  .txn-merchant {
+    font-size: 13px; color: var(--text); line-height: 1.3;
+    word-wrap: break-word;
+  }
+  .txn-meta {
+    margin-top: 3px; font-size: 11px; color: var(--text-faint);
+    display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  }
+  .txn-tag {
+    font-size: 10px; padding: 1px 6px; border-radius: 8px;
+    border: 1px solid var(--border-strong); color: var(--text-faint);
+  }
+  .txn-tag.travel { color: var(--travel); border-color: rgba(127, 119, 221, 0.3); }
+  .txn-tag.recur  { color: var(--recur);  border-color: rgba(55, 138, 221, 0.3); }
+  .txn-amount {
+    font-size: 13px; color: var(--spend); font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0; white-space: nowrap;
+  }
+  .txn-amount.travel { color: var(--travel); }
+  .txn-amount.recur  { color: var(--recur); }
+
+  .loading {
+    padding: 18px 16px; text-align: center; font-size: 13px;
+    color: var(--text-faint);
+  }
+  .empty {
+    padding: 18px 16px; text-align: center; font-size: 13px;
+    color: var(--text-faint); font-style: italic;
+  }
+  .error-msg {
+    padding: 14px 16px; font-size: 13px; color: var(--danger);
+    background: rgba(240, 121, 110, 0.08); border: 1px solid rgba(240, 121, 110, 0.25);
+    border-radius: var(--radius);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>budget</h1>
+  <div class="header-right">
+    <a class="nav" href="./">← today</a>
+    <a class="nav" href="./spend.html">spend</a>
+    <a class="nav" href="./capture.html">captures →</a>
+  </div>
+</header>
+
+<section>
+  <div class="section-head">
+    <h2>cycle</h2>
+    <span class="total" id="cycleWindow">—</span>
+  </div>
+  <div class="card" id="cycleCard">
+    <div class="loading">loading…</div>
+  </div>
+</section>
+
+<section>
+  <div class="section-head">
+    <h2>discretionary by category</h2>
+    <span class="total" id="discTotal">—</span>
+  </div>
+  <div class="accordion-list" id="catList">
+    <div class="loading">loading…</div>
+  </div>
+</section>
+
+<section>
+  <div class="section-head">
+    <h2>travel</h2>
+    <span class="total travel" id="travelTotalLabel">—</span>
+  </div>
+  <div class="accordion-list" id="travelList">
+    <div class="loading">loading…</div>
+  </div>
+</section>
+
+<section>
+  <div class="section-head">
+    <h2>recurring</h2>
+    <span class="total recur" id="recurTotalLabel">—</span>
+  </div>
+  <div class="accordion-list" id="recurList">
+    <div class="loading">loading…</div>
+  </div>
+</section>
+
+<script>
+  const SUPABASE_URL = "https://fwqhomgawlgicqiqqqhw.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ3cWhvbWdhd2xnaWNxaXFxcWh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyMTE1NDYsImV4cCI6MjA5Mjc4NzU0Nn0.LF82rWM0rX5FKY0Qo5Vsym_VWgV2reL_U8LkHbfWVHI";
+  const REST = `${SUPABASE_URL}/rest/v1`;
+  const HEADERS = {
+    "apikey": SUPABASE_ANON_KEY,
+    "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+    "Content-Type": "application/json",
+  };
+
+  function escapeHtml(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[c]));
+  }
+  function bpDateISO(d = new Date()) {
+    const fmt = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Europe/Budapest',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+    });
+    return fmt.format(d);
+  }
+  function fmtShortDate(iso) {
+    const d = new Date(iso + 'T00:00:00');
+    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }).toLowerCase();
+  }
+  function fmtHUF(n) {
+    return Math.round(n).toLocaleString('en-GB') + ' HUF';
+  }
+  async function sbGet(path) {
+    const res = await fetch(`${REST}/${path}`, { headers: HEADERS });
+    if (!res.ok) throw new Error(`GET ${path}: ${res.status}`);
+    return res.json();
+  }
+
+  const TODAY = bpDateISO();
+
+  // ---- Cycle math: 5th -> 4th next month, Europe/Budapest ----
+  function computeCycle() {
+    const [tY, tM, tD] = TODAY.split('-').map(Number);
+    let startY = tY, startM = tM;
+    if (tD < 5) {
+      startM -= 1;
+      if (startM === 0) { startM = 12; startY -= 1; }
+    }
+    const startStr = `${startY}-${String(startM).padStart(2,'0')}-05`;
+    let endY = startY, endM = startM + 1;
+    if (endM === 13) { endM = 1; endY += 1; }
+    const endStr = `${endY}-${String(endM).padStart(2,'0')}-04`;
+    const startD = new Date(startStr + 'T00:00:00Z');
+    const endD   = new Date(endStr   + 'T00:00:00Z');
+    const todayD = new Date(TODAY    + 'T00:00:00Z');
+    const totalDays   = Math.round((endD - startD) / 86400000) + 1;
+    const dayInCycle  = Math.round((todayD - startD) / 86400000) + 1;
+    const daysLeft    = totalDays - dayInCycle + 1; // includes today
+    return { startStr, endStr, totalDays, dayInCycle, daysLeft };
+  }
+
+  async function loadData(cycle) {
+    const [spend, settingsRows] = await Promise.all([
+      sbGet(`metrics?select=id,date,value,unit,category,tags,note,source,created_at&metric_type=eq.spend&date=gte.${cycle.startStr}&date=lte.${cycle.endStr}&order=date.asc`),
+      sbGet(`settings?key=in.(monthly_budget_huf,eur_huf_rate,daily_spend_target_huf)`),
+    ]);
+    const settings = Object.fromEntries(settingsRows.map(r => [r.key, r.value]));
+    const eurRate = +(settings.eur_huf_rate || 350);
+    const pot = +(settings.monthly_budget_huf || 300000);
+    const dailyTarget = +(settings.daily_spend_target_huf || 10000);
+
+    // Normalize to HUF and pre-compute tags
+    const rows = spend.map(s => {
+      const tags = s.tags || [];
+      return {
+        ...s,
+        tags,
+        huf: s.unit === 'EUR' ? Math.round(+s.value * eurRate) : +s.value,
+        isRecurring: tags.includes('recurring'),
+        isTravel:    tags.includes('travel'),
+      };
+    });
+    return { rows, eurRate, pot, dailyTarget };
+  }
+
+  function renderCycleCard(cycle, totals, pot, dailyTarget) {
+    const { discTotal } = totals;
+    const remaining = pot - discTotal;
+    const overPot = discTotal > pot;
+    const pctOfPot = pot > 0 ? Math.round(discTotal / pot * 100) : 0;
+    const barW = Math.min(pctOfPot, 100);
+
+    // Target pace = pot / totalDays. Actual pace = discTotal / dayInCycle.
+    const idealPace  = pot / cycle.totalDays;
+    const actualPace = discTotal / cycle.dayInCycle;
+    // What's actually "left to spend per day" given the remaining pot
+    const perDayLeft = cycle.daysLeft > 0 ? remaining / cycle.daysLeft : 0;
+    const overPace = actualPace > idealPace;
+
+    // Position of "today" marker on the bar (% of cycle elapsed)
+    const todayMarkerPct = Math.min(cycle.dayInCycle / cycle.totalDays * 100, 100);
+
+    document.getElementById('cycleWindow').textContent =
+      `${fmtShortDate(cycle.startStr)} → ${fmtShortDate(cycle.endStr)}`;
+
+    document.getElementById('cycleCard').innerHTML = `
+      <div class="cycle-head">
+        <span class="cycle-amount ${overPot ? 'over' : ''}">
+          ${fmtHUF(discTotal)}<span class="unit">of ${(pot/1000).toFixed(0)}k</span>
+        </span>
+        <span class="cycle-pct ${overPot ? 'over' : ''}">${pctOfPot}%</span>
+      </div>
+      <div class="cycle-sub">discretionary spend this cycle</div>
+      <div class="bar">
+        <div class="bar-fill ${overPot ? 'over' : ''}" style="width:${barW}%"></div>
+        <div class="bar-marker" style="left:${todayMarkerPct}%" title="today"></div>
+      </div>
+      <div class="cycle-foot">
+        <span><span class="label">day</span> <span class="value">${cycle.dayInCycle} / ${cycle.totalDays}</span></span>
+        <span><span class="label">${overPot ? 'over by' : 'left in pot'}</span>
+              <span class="value ${overPot ? 'over' : ''}">${fmtHUF(Math.abs(remaining))}</span></span>
+      </div>
+      <div class="daily-hero">
+        <div class="daily-hero-body">
+          <div class="daily-hero-label">left to spend today</div>
+          <div class="daily-hero-amount ${perDayLeft < 0 ? 'over' : ''}">
+            ${perDayLeft < 0 ? '−' : ''}${fmtHUF(Math.abs(perDayLeft))}<span class="unit">/day · ${cycle.daysLeft}d left</span>
+          </div>
+        </div>
+        <div class="daily-hero-pace">
+          pace<br/>
+          <span class="pace-actual">${fmtHUF(actualPace)}</span><br/>
+          <span style="color:var(--text-faint)">vs ${fmtHUF(idealPace)} target</span>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderSummary() { /* future: 4-up grid if we want it */ }
+
+  function renderCategoryAccordion(containerId, items, totalLabelEl, tone) {
+    // Group items by category
+    const byCat = new Map();
+    items.forEach(s => {
+      if (!byCat.has(s.category)) byCat.set(s.category, []);
+      byCat.get(s.category).push(s);
+    });
+    const cats = Array.from(byCat.entries())
+      .map(([cat, txns]) => ({
+        cat,
+        total: txns.reduce((sum, t) => sum + t.huf, 0),
+        txns: txns.sort((a, b) => b.huf - a.huf),
+      }))
+      .sort((a, b) => b.total - a.total);
+
+    const grandTotal = cats.reduce((s, c) => s + c.total, 0);
+    const max = cats.length > 0 ? cats[0].total : 0;
+    if (totalLabelEl) totalLabelEl.textContent = fmtHUF(grandTotal);
+
+    const container = document.getElementById(containerId);
+    if (cats.length === 0) {
+      container.innerHTML = '<div class="empty">nothing this cycle</div>';
+      return;
+    }
+    container.innerHTML = cats.map(({ cat, total, txns }) => {
+      const barW = max > 0 ? Math.round(total / max * 100) : 0;
+      const txnRows = txns.map(t => {
+        const tagPills = [];
+        if (t.isTravel)    tagPills.push('<span class="txn-tag travel">travel</span>');
+        if (t.isRecurring) tagPills.push('<span class="txn-tag recur">recurring</span>');
+        const meta = [fmtShortDate(t.date), ...tagPills].join('<span>·</span>');
+        return `
+          <div class="txn-row">
+            <div class="txn-body">
+              <div class="txn-merchant">${escapeHtml(t.note || '(no merchant)')}</div>
+              <div class="txn-meta">${meta}</div>
+            </div>
+            <span class="txn-amount ${tone}">${fmtHUF(t.huf)}</span>
+          </div>`;
+      }).join('');
+      return `
+        <div class="cat-block" data-cat="${escapeHtml(cat)}">
+          <div class="cat-row">
+            <span class="cat-chevron">▸</span>
+            <div class="cat-body">
+              <div class="cat-label">${escapeHtml(cat)}</div>
+              <div class="cat-sub">${txns.length} txn${txns.length === 1 ? '' : 's'}</div>
+            </div>
+            <div class="cat-bar-wrap">
+              <div class="cat-bar-fill ${tone}" style="width:${barW}%"></div>
+            </div>
+            <span class="cat-amount">${fmtHUF(total)}</span>
+          </div>
+          <div class="cat-txns">${txnRows}</div>
+        </div>`;
+    }).join('');
+
+    container.querySelectorAll('.cat-block').forEach(block => {
+      const row = block.querySelector('.cat-row');
+      row.addEventListener('click', () => block.classList.toggle('expanded'));
+    });
+  }
+
+  function renderRecurringList(items) {
+    const container = document.getElementById('recurList');
+    const labelEl = document.getElementById('recurTotalLabel');
+    const total = items.reduce((s, t) => s + t.huf, 0);
+    labelEl.textContent = fmtHUF(total);
+    if (items.length === 0) {
+      container.innerHTML = '<div class="empty">no recurring spend yet</div>';
+      return;
+    }
+    // Sort by amount desc (rent will be on top)
+    const sorted = [...items].sort((a, b) => b.huf - a.huf);
+    container.innerHTML = sorted.map(t => `
+      <div class="cat-block">
+        <div class="cat-row no-txns" style="cursor:default;">
+          <span class="cat-chevron"></span>
+          <div class="cat-body">
+            <div class="cat-label" style="text-transform:none;">${escapeHtml(t.note || '(no merchant)')}</div>
+            <div class="cat-sub">${fmtShortDate(t.date)} · ${escapeHtml(t.category)}</div>
+          </div>
+          <span class="cat-amount" style="color:var(--recur);">${fmtHUF(t.huf)}</span>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  async function loadAll() {
+    try {
+      const cycle = computeCycle();
+      const { rows, pot, dailyTarget } = await loadData(cycle);
+
+      const discRows   = rows.filter(r => !r.isRecurring && !r.isTravel);
+      const travelRows = rows.filter(r => r.isTravel);
+      const recurRows  = rows.filter(r => r.isRecurring);
+
+      const discTotal   = discRows.reduce((s, r) => s + r.huf, 0);
+      const travelTotal = travelRows.reduce((s, r) => s + r.huf, 0);
+      const recurTotal  = recurRows.reduce((s, r) => s + r.huf, 0);
+
+      renderCycleCard(cycle, { discTotal, travelTotal, recurTotal }, pot, dailyTarget);
+      renderCategoryAccordion('catList', discRows, document.getElementById('discTotal'), 'spend');
+      renderCategoryAccordion('travelList', travelRows, document.getElementById('travelTotalLabel'), 'travel');
+      renderRecurringList(recurRows);
+    } catch (e) {
+      console.error(e);
+      document.getElementById('cycleCard').innerHTML =
+        `<div class="error-msg">load failed: ${escapeHtml(e.message)}</div>`;
+      document.getElementById('catList').innerHTML = '';
+      document.getElementById('travelList').innerHTML = '';
+      document.getElementById('recurList').innerHTML = '';
+    }
+  }
+
+  loadAll();
+</script>
+
+</body>
+</html>
