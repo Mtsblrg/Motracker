@@ -258,6 +258,60 @@
     border-radius: var(--radius);
   }
 
+
+  /* BUDGET widget (cycle-aware "left to spend today") */
+  .budget {
+    background: var(--surface); border: 1px solid var(--border-strong);
+    border-radius: var(--radius); padding: 16px;
+  }
+  .budget-hero {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 4px;
+  }
+  .budget-hero-label {
+    font-size: 11px; font-weight: 600; letter-spacing: 1.5px;
+    text-transform: uppercase; color: var(--text-dim);
+  }
+  .budget-hero-gap {
+    font-size: 12px; font-weight: 500; color: var(--text-faint);
+    font-variant-numeric: tabular-nums;
+  }
+  .budget-hero-gap.over { color: var(--spend); }
+  .budget-amount {
+    font-size: 28px; font-weight: 600; color: var(--accent);
+    letter-spacing: -0.4px; font-variant-numeric: tabular-nums;
+    margin-bottom: 2px; line-height: 1.15;
+  }
+  .budget-amount.over { color: var(--spend); }
+  .budget-amount .unit {
+    font-size: 14px; font-weight: 400; color: var(--text-dim);
+    margin-left: 4px; letter-spacing: 0;
+  }
+  .budget-sub {
+    font-size: 12px; color: var(--text-faint); margin-bottom: 12px;
+    font-variant-numeric: tabular-nums;
+  }
+  .budget-bar {
+    height: 6px; background: var(--border); border-radius: 3px;
+    overflow: hidden; position: relative; margin-bottom: 10px;
+  }
+  .budget-bar-fill {
+    height: 100%; background: var(--accent); border-radius: 3px;
+    transition: width 0.4s ease-out;
+  }
+  .budget-bar-fill.over { background: var(--spend); }
+  .budget-cycle-mark {
+    position: absolute; top: -2px; bottom: -2px; width: 2px;
+    background: var(--text-faint); opacity: 0.6;
+  }
+  .budget-foot {
+    display: flex; justify-content: space-between;
+    font-size: 12px; color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+  }
+  .budget-foot .cycle-day { color: var(--text); font-weight: 500; }
+  .budget-foot .today-spent { color: var(--spend-dim); }
+
   .metric {
     background: var(--surface); border: 1px solid var(--border-strong);
     border-radius: var(--radius); padding: 16px;
@@ -544,6 +598,7 @@
   <h1 id="title">motracker</h1>
   <div class="header-right">
     <span class="date" id="date">—</span>
+    <a class="nav" href="./budget.html">budget →</a>
     <a class="nav" href="./spend.html">spend →</a>
     <a class="nav" href="./capture.html">captures →</a>
   </div>
@@ -592,6 +647,13 @@
     <span class="count" id="capturesCount"><span class="chevron" id="capturesChevron">▾</span></span>
   </div>
   <div class="captures-list hidden" id="capturesList">
+    <div class="loading">loading…</div>
+  </div>
+</section>
+
+<section>
+  <div class="section-head"><h2>budget</h2></div>
+  <div class="budget" id="budgetWidget">
     <div class="loading">loading…</div>
   </div>
 </section>
@@ -687,6 +749,7 @@
   let SPEND_ENTRIES = [];
   let RECENT_CAPTURES = [];
   let GOALS = { calories: 2500, spend: 10000 };
+  let BUDGET = null;  // { pot, cycleStart, cycleEnd, dayN, daysTotal, daysRemaining, discretionarySpent, recurringSpent, todayDiscretionary, eurHufRate }
   let CAPTURES_OPEN = false;
   let FOOD_OPEN = false;
   let SPEND_OPEN = false;
@@ -759,13 +822,139 @@
 
   async function loadGoals() {
     try {
-      const rows = await sbGet(`settings?key=in.(daily_calorie_target,daily_spend_target_huf)`);
+      const rows = await sbGet(`settings?key=in.(daily_calorie_target,daily_spend_target_huf,monthly_budget_huf,budget_day,eur_huf_rate)`);
       rows.forEach(r => {
         if (r.key === "daily_calorie_target")     GOALS.calories = +r.value;
         if (r.key === "daily_spend_target_huf")   GOALS.spend    = +r.value;
+        if (r.key === "monthly_budget_huf")       GOALS.pot      = +r.value;
+        if (r.key === "budget_day")               GOALS.budgetDay = +r.value;
+        if (r.key === "eur_huf_rate")             GOALS.eurHuf   = +r.value;
       });
+      if (!GOALS.pot)        GOALS.pot = 300000;
+      if (!GOALS.budgetDay)  GOALS.budgetDay = 5;
+      if (!GOALS.eurHuf)     GOALS.eurHuf = 350;
     } catch (e) { console.warn("Failed to load goals, using defaults:", e); }
   }
+
+  // Budget cycle helpers
+  function budgetCycle(refDate) {
+    // Returns { cycleStart, cycleEnd } as YYYY-MM-DD strings for the cycle containing refDate.
+    // Cycle = budgetDay of month N -> (budgetDay - 1) of month N+1.
+    const day = GOALS.budgetDay || 5;
+    const [y, m, d] = refDate.split('-').map(Number);
+    let startY = y, startM = m;  // 1-indexed month
+    if (d < day) { startM -= 1; if (startM < 1) { startM = 12; startY -= 1; } }
+    let endY = startY, endM = startM + 1;
+    if (endM > 12) { endM = 1; endY += 1; }
+    // end date = (day - 1) of endM, but cap at last-day-of-month
+    const lastDayOfEndM = new Date(endY, endM, 0).getDate();
+    const endD = Math.min(day - 1, lastDayOfEndM);
+    const start = `${startY}-${String(startM).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const end   = `${endY}-${String(endM).padStart(2, '0')}-${String(endD).padStart(2, '0')}`;
+    return { cycleStart: start, cycleEnd: end };
+  }
+  function daysBetween(aISO, bISO) {
+    const a = new Date(aISO + 'T00:00:00');
+    const b = new Date(bISO + 'T00:00:00');
+    return Math.round((b - a) / 86400000);
+  }
+
+  async function loadBudget() {
+    try {
+      const { cycleStart, cycleEnd } = budgetCycle(VIEW_DATE);
+      // Fetch all spend metrics for the cycle up to and including TODAY (or VIEW_DATE if past)
+      const endQuery = VIEW_DATE < cycleEnd ? VIEW_DATE : cycleEnd;
+      const rows = await sbGet(
+        `metrics?metric_type=eq.spend&date=gte.${cycleStart}&date=lte.${endQuery}` +
+        `&select=value,unit,tags,date`
+      );
+      const eurHuf = GOALS.eurHuf || 350;
+      let discretionary = 0, recurring = 0, today = 0;
+      for (const r of rows) {
+        const huf = r.unit === 'EUR' ? +r.value * eurHuf : +r.value;
+        const isRecurring = Array.isArray(r.tags) && r.tags.includes('recurring');
+        if (isRecurring) recurring += huf;
+        else discretionary += huf;
+        if (r.date === VIEW_DATE && !isRecurring) today += huf;
+      }
+      const daysTotal     = daysBetween(cycleStart, cycleEnd) + 1;
+      const dayN          = daysBetween(cycleStart, VIEW_DATE) + 1;
+      const daysRemaining = Math.max(0, daysBetween(VIEW_DATE, cycleEnd));
+      BUDGET = {
+        pot: GOALS.pot || 300000,
+        cycleStart, cycleEnd, dayN, daysTotal, daysRemaining,
+        discretionarySpent: Math.round(discretionary),
+        recurringSpent:     Math.round(recurring),
+        todayDiscretionary: Math.round(today),
+        eurHufRate: eurHuf,
+      };
+    } catch (e) {
+      console.warn("Failed to load budget:", e);
+      BUDGET = null;
+    }
+  }
+
+  function fmtMoney(n) {
+    return Math.round(n).toLocaleString('en-US').replace(/,/g, ' ');
+  }
+
+  function renderBudget() {
+    const el = document.getElementById('budgetWidget');
+    if (!BUDGET) {
+      el.innerHTML = '<div class="empty">no budget data</div>';
+      return;
+    }
+    const { pot, dayN, daysTotal, daysRemaining, discretionarySpent, todayDiscretionary } = BUDGET;
+    const remaining = pot - discretionarySpent;
+    const overPot   = remaining < 0;
+
+    // Cycle position marker (where TODAY sits along the cycle bar) — 0..100
+    const cycleProgress = Math.min(100, Math.max(0, ((dayN - 1) / Math.max(1, daysTotal - 1)) * 100));
+
+    // Headline + subline differ by state
+    let heroAmount, heroLabel, heroGap = '', subline = '';
+    if (!overPot && daysRemaining > 0) {
+      // Within pot, days left: show daily allowance
+      const perDay = Math.floor(remaining / Math.max(1, daysRemaining + 1));  // include today
+      heroAmount = fmtMoney(perDay);
+      heroLabel = 'left to spend today';
+      heroGap = `${fmtMoney(remaining)} left in pot`;
+      subline = `to stay on target through day ${daysTotal}`;
+    } else if (!overPot && daysRemaining === 0) {
+      // Last day of cycle, still within pot
+      heroAmount = fmtMoney(remaining);
+      heroLabel = 'left in pot (cycle ends today)';
+    } else {
+      // Over pot: show gap to target pace
+      const dailyAvg = Math.round(discretionarySpent / Math.max(1, dayN));
+      const targetDaily = Math.round(pot / daysTotal);
+      heroAmount = fmtMoney(dailyAvg);
+      heroLabel = 'avg / day this cycle';
+      heroGap = `target ${fmtMoney(targetDaily)} / day`;
+      subline = `${fmtMoney(-remaining)} over target so far`;
+    }
+
+    // Bar shows discretionary spent vs pot (clamped to 100%)
+    const barPct = Math.min(100, (discretionarySpent / pot) * 100);
+
+    el.innerHTML = `
+      <div class="budget-hero">
+        <span class="budget-hero-label">${heroLabel}</span>
+        ${heroGap ? `<span class="budget-hero-gap${overPot ? ' over' : ''}">${heroGap}</span>` : ''}
+      </div>
+      <div class="budget-amount${overPot ? ' over' : ''}">${heroAmount}<span class="unit">HUF</span></div>
+      ${subline ? `<div class="budget-sub">${subline}</div>` : '<div class="budget-sub">&nbsp;</div>'}
+      <div class="budget-bar">
+        <div class="budget-bar-fill${overPot ? ' over' : ''}" style="width:${barPct}%"></div>
+        <div class="budget-cycle-mark" style="left:${cycleProgress}%"></div>
+      </div>
+      <div class="budget-foot">
+        <span>day <span class="cycle-day">${dayN} of ${daysTotal}</span></span>
+        <span class="today-spent">today: ${fmtMoney(todayDiscretionary)} HUF</span>
+      </div>
+    `;
+  }
+
 
   async function loadTasks() {
     let url;
@@ -833,6 +1022,7 @@
   async function loadAll() {
     try {
       await Promise.all([loadGoals(), loadTasks(), loadShopping(), loadMetrics(), loadRecentCaptures()]);
+      await loadBudget();  // depends on GOALS
       renderAll();
     } catch (e) {
       console.error(e);
@@ -841,6 +1031,7 @@
       document.getElementById("shoppingList").innerHTML = "";
       document.getElementById("caloriesMetric").innerHTML = "";
       document.getElementById("spendMetric").innerHTML = "";
+      document.getElementById("budgetWidget").innerHTML = "";
       document.getElementById("capturesList").innerHTML = "";
     }
   }
@@ -1150,6 +1341,7 @@
     renderShopping();
     renderCaloriesMetric();
     renderRecentCaptures();
+    renderBudget();
     renderSpendMetric();
   }
 
