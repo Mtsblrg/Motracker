@@ -1,4 +1,13 @@
 <!DOCTYPE html>
+<!--
+  Motracker dashboard — FINANCE-ONLY by design.
+  Spend, budget cycle, and money trends only.
+  Lifestyle trackers (workout_done, workout_active, coffee, water, cig_factory,
+  cig_rolled, apartment, calories, sleep, screen) live on:
+    - index.html        (today's input view)
+    - trackers.html     (history view, via today/trackers sub-tabs)
+  Do not re-add lifestyle widgets here. See userMemories REPOS entry.
+-->
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
@@ -184,47 +193,6 @@
     font-variant-numeric: tabular-nums;
   }
 
-  .tobacco-week {
-    display: flex; gap: 6px; margin-top: 8px;
-  }
-  .tob-day {
-    flex: 1; display: flex; flex-direction: column; align-items: center;
-    gap: 4px;
-  }
-  .tob-dot {
-    width: 100%; height: 6px; border-radius: 3px;
-    background: var(--border);
-  }
-  .tob-dot.good { background: var(--zone-good); }
-  .tob-dot.mid  { background: var(--zone-mid); }
-  .tob-dot.bad  { background: var(--zone-bad); }
-  .tob-dot.free { background: var(--zone-low); opacity: 0.6; }
-  .tob-label {
-    font-size: 9px; color: var(--text-faint);
-    text-transform: uppercase; letter-spacing: 0.5px;
-  }
-  .tob-label.today { color: var(--accent); font-weight: 600; }
-  .tob-label.free  { color: var(--zone-low); }
-
-  .workout-dots {
-    display: flex; gap: 14px; align-items: center; margin-top: 4px;
-  }
-  .wo-dot {
-    display: flex; align-items: center; gap: 8px;
-  }
-  .wo-circle {
-    width: 18px; height: 18px; border-radius: 50%;
-    border: 2px solid var(--border-strong);
-  }
-  .wo-circle.filled { background: var(--zone-good); border-color: var(--zone-good); }
-  .wo-text { font-size: 13px; color: var(--text-dim); }
-  .wo-text.filled { color: var(--text); }
-
-  .placeholder-note {
-    font-size: 11px; color: var(--text-faint); font-style: italic;
-    margin-top: 4px;
-  }
-
   .trend-widget {
     background: var(--surface); border: 1px solid var(--border-strong);
     border-radius: var(--radius); padding: 14px 16px; margin-bottom: 12px;
@@ -307,17 +275,11 @@
   };
 
   let GOALS = {
-    calories: 2500,
     spend: 10000,
     pot: 300000,
     budgetDay: 5,
     eurHuf: 350,
-    sleepMin: 7, sleepMax: 9,
-    screenTarget: 4,
-    calMin: 2200, calMax: 2700, calLow: 2000, calHigh: 3000,
   };
-  const TOBACCO_LIMITS = { 0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: Infinity, 6: Infinity };
-  const DOW_LABELS = ['S','M','T','W','T','F','S'];
 
   let TAB = 'D';
 
@@ -359,20 +321,12 @@
 
   async function loadGoals() {
     try {
-      const rows = await sbGet(`settings?key=in.(daily_calorie_target,daily_spend_target_huf,monthly_budget_huf,budget_day,eur_huf_rate,sleep_target_min,sleep_target_max,screen_time_target,cal_band_min,cal_band_max,cal_low_threshold,cal_high_threshold)`);
+      const rows = await sbGet(`settings?key=in.(daily_spend_target_huf,monthly_budget_huf,budget_day,eur_huf_rate)`);
       rows.forEach(r => {
-        if (r.key === "daily_calorie_target")     GOALS.calories = +r.value;
         if (r.key === "daily_spend_target_huf")   GOALS.spend    = +r.value;
         if (r.key === "monthly_budget_huf")       GOALS.pot      = +r.value;
         if (r.key === "budget_day")               GOALS.budgetDay = +r.value;
         if (r.key === "eur_huf_rate")             GOALS.eurHuf   = +r.value;
-        if (r.key === "sleep_target_min")         GOALS.sleepMin = +r.value;
-        if (r.key === "sleep_target_max")         GOALS.sleepMax = +r.value;
-        if (r.key === "screen_time_target")       GOALS.screenTarget = +r.value;
-        if (r.key === "cal_band_min")             GOALS.calMin = +r.value;
-        if (r.key === "cal_band_max")             GOALS.calMax = +r.value;
-        if (r.key === "cal_low_threshold")        GOALS.calLow = +r.value;
-        if (r.key === "cal_high_threshold")       GOALS.calHigh = +r.value;
       });
     } catch (e) { console.warn("goals load failed", e); }
   }
@@ -400,26 +354,19 @@
     const { cycleStart, cycleEnd } = budgetCycle(TODAY);
     const cycleEnd1 = TODAY < cycleEnd ? TODAY : cycleEnd;
 
-    const [todayMetrics, cycleSpend, weekTobacco] = await Promise.all([
-      sbGet(`metrics?date=eq.${TODAY}&select=metric_type,value,unit,tags`),
+    // Dashboard is FINANCE-ONLY. Lifestyle trackers (workout, tobacco, sleep, screen, calories,
+    // coffee, water, apartment) live on the today page and trackers.html. Do not re-add them here.
+    const [todayMetrics, cycleSpend] = await Promise.all([
+      sbGet(`metrics?date=eq.${TODAY}&metric_type=eq.spend&select=value,unit,tags`),
       sbGet(`metrics?metric_type=eq.spend&date=gte.${cycleStart}&date=lte.${cycleEnd1}&select=value,unit,tags,date`),
-      sbGet(`metrics?metric_type=eq.tobacco&date=gte.${addDays(TODAY, -6)}&date=lte.${TODAY}&select=value,date`),
     ]);
 
-    let spendToday = 0, calToday = 0, tobToday = 0;
-    let sleepToday = null, screenToday = null;
-    let workoutActive = false, workoutDone = false;
+    let spendToday = 0;
     for (const r of todayMetrics) {
       const v = +r.value;
       const huf = r.unit === 'EUR' ? v * GOALS.eurHuf : v;
       const isRecurring = Array.isArray(r.tags) && r.tags.includes('recurring');
-      if (r.metric_type === 'spend' && !isRecurring) spendToday += huf;
-      if (r.metric_type === 'calories') calToday += v;
-      if (r.metric_type === 'tobacco') tobToday += v;
-      if (r.metric_type === 'sleep_hours') sleepToday = v;
-      if (r.metric_type === 'screen_time_hours') screenToday = v;
-      if (r.metric_type === 'workout_active') workoutActive = v > 0;
-      if (r.metric_type === 'workout_done') workoutDone = v > 0;
+      if (!isRecurring) spendToday += huf;
     }
 
     let cycleDiscretionary = 0;
@@ -432,20 +379,13 @@
     const dayN          = daysBetween(cycleStart, TODAY) + 1;
     const daysRemaining = Math.max(0, daysBetween(TODAY, cycleEnd));
 
-    const tobByDate = {};
-    for (const r of weekTobacco) {
-      tobByDate[r.date] = (tobByDate[r.date] || 0) + (+r.value || 0);
-    }
-
     return {
-      spendToday, calToday, tobToday, sleepToday, screenToday,
-      workoutActive, workoutDone,
+      spendToday,
       cycle: {
         cycleStart, cycleEnd, dayN, daysTotal, daysRemaining,
         spent: Math.round(cycleDiscretionary),
         pot: GOALS.pot,
       },
-      tobByDate,
     };
   }
 
@@ -454,11 +394,6 @@
     root.innerHTML = `
       ${renderCycleCard(data.cycle)}
       ${renderSpendWidget(data.spendToday)}
-      ${renderCaloriesWidget(data.calToday)}
-      ${renderTobaccoWidget(data.tobToday, data.tobByDate)}
-      ${renderWorkoutWidget(data.workoutActive, data.workoutDone)}
-      ${renderSleepWidget(data.sleepToday)}
-      ${renderScreenWidget(data.screenToday)}
     `;
   }
 
@@ -550,208 +485,6 @@
     `;
   }
 
-  function renderCaloriesWidget(cal) {
-    const { calLow, calMin, calMax, calHigh } = GOALS;
-    const max = calHigh + 500;
-    let status, statusText;
-    if (cal < calLow)       { status = 'low'; statusText = `${fmt(calMin - cal)} below band`; }
-    else if (cal < calMin)  { status = 'mid'; statusText = `${fmt(calMin - cal)} below band`; }
-    else if (cal <= calMax) { status = 'good'; statusText = 'in band'; }
-    else if (cal <= calHigh){ status = 'mid'; statusText = `${fmt(cal - calMax)} over band`; }
-    else                    { status = 'bad'; statusText = `${fmt(cal - calMax)} over band`; }
-
-    return `
-      <div class="widget">
-        <div class="widget-head">
-          <span class="widget-label">calories today</span>
-          <span class="widget-status ${status}">${escapeHtml(statusText)}</span>
-        </div>
-        <div class="widget-value">${fmt(cal)}<span class="unit">kcal</span><span class="sub">band ${fmt(calMin)}–${fmt(calMax)}</span></div>
-        ${zoneBar([
-          { weight: calLow,           color: 'var(--zone-bad-bg)' },
-          { weight: calMin - calLow,  color: 'var(--zone-mid-bg)' },
-          { weight: calMax - calMin,  color: 'var(--zone-good-bg)' },
-          { weight: calHigh - calMax, color: 'var(--zone-mid-bg)' },
-          { weight: max - calHigh,    color: 'var(--zone-bad-bg)' },
-        ], cal, max)}
-        <div class="zone-foot">
-          <span>0</span><span>${fmt(calMin)}</span><span>${fmt(calMax)}</span><span>${fmt(max)}</span>
-        </div>
-      </div>
-    `;
-  }
-
-  function renderTobaccoWidget(today, byDate) {
-    const dow = new Date(TODAY + 'T00:00:00').getDay();
-    const limit = TOBACCO_LIMITS[dow];
-    const isFree = limit === Infinity;
-    let status, statusText;
-    if (isFree) {
-      status = 'low';
-      statusText = today === 0 ? 'free day · 0 logged' : `free day · ${today} logged`;
-    } else if (today === 0) {
-      status = 'good'; statusText = `0 / ${limit} today`;
-    } else if (today <= limit) {
-      status = 'mid'; statusText = `at limit (${today}/${limit})`;
-    } else {
-      status = 'bad'; statusText = `${today - limit} over limit`;
-    }
-
-    let streak = 0;
-    for (let i = 0; i < 7; i++) {
-      const iso = addDays(TODAY, -i);
-      const d = new Date(iso + 'T00:00:00').getDay();
-      const lim = TOBACCO_LIMITS[d];
-      const cnt = byDate[iso] || 0;
-      if (cnt <= lim) streak++;
-      else break;
-    }
-
-    const days = [];
-    for (let i = 6; i >= 0; i--) {
-      const iso = addDays(TODAY, -i);
-      const d = new Date(iso + 'T00:00:00').getDay();
-      const lim = TOBACCO_LIMITS[d];
-      const cnt = byDate[iso] || 0;
-      const isToday = iso === TODAY;
-      let cls;
-      if (lim === Infinity) cls = 'free';
-      else if (cnt === 0) cls = 'good';
-      else if (cnt <= lim) cls = 'mid';
-      else cls = 'bad';
-      days.push({ iso, dow: d, cnt, lim, cls, isToday });
-    }
-
-    const dotsHtml = days.map(d => {
-      const dowLetter = DOW_LABELS[d.dow];
-      const labelCls = d.isToday ? 'today' : (d.lim === Infinity ? 'free' : '');
-      return `
-        <div class="tob-day">
-          <div class="tob-dot ${d.cls}"></div>
-          <span class="tob-label ${labelCls}">${dowLetter}</span>
-        </div>
-      `;
-    }).join('');
-
-    return `
-      <div class="widget">
-        <div class="widget-head">
-          <span class="widget-label">tobacco</span>
-          <span class="widget-status ${status}">${escapeHtml(statusText)}</span>
-        </div>
-        <div class="widget-value">${today}<span class="unit">today</span><span class="sub">streak ${streak}d</span></div>
-        <div class="tobacco-week">${dotsHtml}</div>
-      </div>
-    `;
-  }
-
-  function renderWorkoutWidget(active, done) {
-    let status, statusText;
-    if (done) { status = 'good'; statusText = 'workout done'; }
-    else if (active) { status = 'mid'; statusText = 'active day'; }
-    else { status = 'bad'; statusText = 'sedentary'; }
-    return `
-      <div class="widget">
-        <div class="widget-head">
-          <span class="widget-label">movement</span>
-          <span class="widget-status ${status}">${escapeHtml(statusText)}</span>
-        </div>
-        <div class="workout-dots">
-          <div class="wo-dot">
-            <div class="wo-circle ${active ? 'filled' : ''}"></div>
-            <span class="wo-text ${active ? 'filled' : ''}">active day</span>
-          </div>
-          <div class="wo-dot">
-            <div class="wo-circle ${done ? 'filled' : ''}"></div>
-            <span class="wo-text ${done ? 'filled' : ''}">workout</span>
-          </div>
-        </div>
-        <div class="placeholder-note">capture: "workout" or "active" / "moved"</div>
-      </div>
-    `;
-  }
-
-  function renderSleepWidget(hours) {
-    if (hours == null) {
-      return `
-        <div class="widget">
-          <div class="widget-head">
-            <span class="widget-label">sleep</span>
-            <span class="widget-status">not logged</span>
-          </div>
-          <div class="widget-value">—<span class="sub">band ${GOALS.sleepMin}–${GOALS.sleepMax}h</span></div>
-          <div class="placeholder-note">capture: "slept 8h" or "sleep 7.5"</div>
-        </div>
-      `;
-    }
-    const { sleepMin, sleepMax } = GOALS;
-    const max = 12;
-    let status, statusText;
-    if (hours < 6)              { status = 'bad'; statusText = `${(sleepMin - hours).toFixed(1)}h short`; }
-    else if (hours < sleepMin)  { status = 'mid'; statusText = `${(sleepMin - hours).toFixed(1)}h short`; }
-    else if (hours <= sleepMax) { status = 'good'; statusText = 'in band'; }
-    else if (hours <= 10)       { status = 'mid'; statusText = `${(hours - sleepMax).toFixed(1)}h over`; }
-    else                        { status = 'bad'; statusText = `${(hours - sleepMax).toFixed(1)}h over`; }
-
-    return `
-      <div class="widget">
-        <div class="widget-head">
-          <span class="widget-label">sleep</span>
-          <span class="widget-status ${status}">${escapeHtml(statusText)}</span>
-        </div>
-        <div class="widget-value">${hours.toFixed(1)}<span class="unit">h</span><span class="sub">band ${sleepMin}–${sleepMax}h</span></div>
-        ${zoneBar([
-          { weight: 6,                color: 'var(--zone-bad-bg)' },
-          { weight: sleepMin - 6,     color: 'var(--zone-mid-bg)' },
-          { weight: sleepMax - sleepMin, color: 'var(--zone-good-bg)' },
-          { weight: 10 - sleepMax,    color: 'var(--zone-mid-bg)' },
-          { weight: max - 10,         color: 'var(--zone-bad-bg)' },
-        ], hours, max)}
-        <div class="zone-foot">
-          <span>0h</span><span>${sleepMin}h</span><span>${sleepMax}h</span><span>${max}h</span>
-        </div>
-      </div>
-    `;
-  }
-
-  function renderScreenWidget(hours) {
-    if (hours == null) {
-      return `
-        <div class="widget">
-          <div class="widget-head">
-            <span class="widget-label">screen time</span>
-            <span class="widget-status">no data</span>
-          </div>
-          <div class="widget-value">—<span class="sub">target &lt; ${GOALS.screenTarget}h</span></div>
-          <div class="placeholder-note">pending: MacroDroid nightly push from Digital Wellbeing</div>
-        </div>
-      `;
-    }
-    const target = GOALS.screenTarget;
-    const max = 12;
-    let status, statusText;
-    if (hours < target)        { status = 'good'; statusText = `${(target - hours).toFixed(1)}h headroom`; }
-    else if (hours < target * 1.5) { status = 'mid'; statusText = `${(hours - target).toFixed(1)}h over`; }
-    else                       { status = 'bad'; statusText = `${(hours - target).toFixed(1)}h over`; }
-    return `
-      <div class="widget">
-        <div class="widget-head">
-          <span class="widget-label">screen time</span>
-          <span class="widget-status ${status}">${escapeHtml(statusText)}</span>
-        </div>
-        <div class="widget-value">${hours.toFixed(1)}<span class="unit">h</span><span class="sub">target &lt; ${target}h</span></div>
-        ${zoneBar([
-          { weight: target,         color: 'var(--zone-good-bg)' },
-          { weight: target * 0.5,   color: 'var(--zone-mid-bg)' },
-          { weight: max - target * 1.5, color: 'var(--zone-bad-bg)' },
-        ], hours, max)}
-        <div class="zone-foot">
-          <span>0h</span><span>${target}h</span><span>${max}h</span>
-        </div>
-      </div>
-    `;
-  }
-
   const TREND_CONFIG = {
     W: { days: 7,   bucket: 'day',   label: 'last 7 days' },
     M: { days: 30,  bucket: 'day',   label: 'last 30 days' },
@@ -778,15 +511,6 @@
       byDate[r.date] = (byDate[r.date] || 0) + v;
     }
     return byDate;
-  }
-  function aggregateDailyAvg(metrics, type) {
-    const latest = {};
-    for (const r of metrics) {
-      if (r.metric_type !== type) continue;
-      const v = +r.value;
-      latest[r.date] = v;
-    }
-    return latest;
   }
 
   function bucketData(byDate, cfg, start) {
@@ -820,25 +544,6 @@
       }
     }
     return points;
-  }
-  function bucketAvg(byDate, cfg, start) {
-    const points = bucketData(byDate, cfg, start);
-    if (cfg.bucket === 'day') return points;
-    return points.map(p => {
-      if (cfg.bucket === 'week') {
-        let sum = 0, n = 0;
-        for (let i = 0; i < 7; i++) {
-          const iso = addDays(p.date, i);
-          if (byDate[iso] != null) { sum += byDate[iso]; n++; }
-        }
-        return { ...p, value: n > 0 ? sum / n : null };
-      }
-      let sum = 0, n = 0;
-      for (const iso in byDate) {
-        if (iso.slice(0, 7) === p.date.slice(0, 7)) { sum += byDate[iso]; n++; }
-      }
-      return { ...p, value: n > 0 ? sum / n : null };
-    });
   }
 
   function sparkline(points, opts = {}) {
@@ -948,55 +653,6 @@
         ];
       }
 
-      const calBy = aggregateDaily(metrics, 'calories');
-      const calPoints = bucketData(calBy, cfg, start);
-      const calVals = calPoints.map(p => p.value).filter(v => v != null);
-      const calAvg = calVals.length ? calVals.reduce((a,b)=>a+b,0) / calVals.length : 0;
-      let calZones = [];
-      if (cfg.bucket === 'day') {
-        calZones = [
-          { min: 0, max: GOALS.calLow, color: 'rgba(226, 75, 74, 0.15)' },
-          { min: GOALS.calLow, max: GOALS.calMin, color: 'rgba(186, 117, 23, 0.15)' },
-          { min: GOALS.calMin, max: GOALS.calMax, color: 'rgba(99, 153, 34, 0.15)' },
-          { min: GOALS.calMax, max: GOALS.calHigh, color: 'rgba(186, 117, 23, 0.15)' },
-          { min: GOALS.calHigh, max: 1e9, color: 'rgba(226, 75, 74, 0.15)' },
-        ];
-      }
-
-      const tobBy = aggregateDaily(metrics, 'tobacco');
-      const tobPoints = bucketData(tobBy, cfg, start);
-      const tobVals = tobPoints.map(p => p.value).filter(v => v != null);
-      const tobAvg = tobVals.length ? tobVals.reduce((a,b)=>a+b,0) / tobVals.length : 0;
-      const tobTotal = tobVals.reduce((a,b)=>a+b, 0);
-
-      const sleepBy = aggregateDailyAvg(metrics, 'sleep_hours');
-      const sleepPoints = bucketAvg(sleepBy, cfg, start);
-      const sleepVals = sleepPoints.map(p => p.value).filter(v => v != null);
-      const sleepAvg = sleepVals.length ? sleepVals.reduce((a,b)=>a+b,0) / sleepVals.length : null;
-      let sleepZones = [
-        { min: 0, max: 6, color: 'rgba(226, 75, 74, 0.15)' },
-        { min: 6, max: GOALS.sleepMin, color: 'rgba(186, 117, 23, 0.15)' },
-        { min: GOALS.sleepMin, max: GOALS.sleepMax, color: 'rgba(99, 153, 34, 0.15)' },
-        { min: GOALS.sleepMax, max: 10, color: 'rgba(186, 117, 23, 0.15)' },
-        { min: 10, max: 12, color: 'rgba(226, 75, 74, 0.15)' },
-      ];
-
-      const screenBy = aggregateDailyAvg(metrics, 'screen_time_hours');
-      const screenPoints = bucketAvg(screenBy, cfg, start);
-      const screenVals = screenPoints.map(p => p.value).filter(v => v != null);
-      const screenAvg = screenVals.length ? screenVals.reduce((a,b)=>a+b,0) / screenVals.length : null;
-      let screenZones = [
-        { min: 0, max: GOALS.screenTarget, color: 'rgba(99, 153, 34, 0.15)' },
-        { min: GOALS.screenTarget, max: GOALS.screenTarget * 1.5, color: 'rgba(186, 117, 23, 0.15)' },
-        { min: GOALS.screenTarget * 1.5, max: 12, color: 'rgba(226, 75, 74, 0.15)' },
-      ];
-
-      const woBy = aggregateDaily(metrics, 'workout_done');
-      const activeBy = aggregateDaily(metrics, 'workout_active');
-      const woPoints = bucketData(woBy, cfg, start);
-      const woDays = Object.values(woBy).filter(v => v > 0).length;
-      const activeDays = Object.values(activeBy).filter(v => v > 0).length;
-
       const xL = xAxisLabels(spendPoints);
 
       root.innerHTML = `
@@ -1005,41 +661,6 @@
           `${fmt(spendAvg)}<span class="unit">HUF avg / ${cfg.bucket}</span>`,
           `total ${fmt(spendTotal)}`,
           sparkline(spendPoints, { zones: spendZones, dotColor: '#f0a955' }),
-          xL,
-        )}
-        ${trendWidget(
-          `calories · ${cfg.label}`,
-          `${fmt(calAvg)}<span class="unit">kcal avg / ${cfg.bucket}</span>`,
-          calVals.length ? `${calVals.length} ${cfg.bucket}s logged` : 'no data',
-          sparkline(calPoints, { zones: calZones, dotColor: '#c4f060' }),
-          xL,
-        )}
-        ${trendWidget(
-          `tobacco · ${cfg.label}`,
-          `${fmt(tobAvg)}<span class="unit">avg / ${cfg.bucket}</span>`,
-          `total ${fmt(tobTotal)}`,
-          sparkline(tobPoints, { dotColor: '#f0796e' }),
-          xL,
-        )}
-        ${trendWidget(
-          `movement · ${cfg.label}`,
-          `${woDays}<span class="unit">workouts</span><span class="sub">${activeDays} active days</span>`,
-          cfg.days >= 30 ? `${Math.round(woDays / cfg.days * 100)}% workout rate` : `${woDays}/${cfg.days} days`,
-          sparkline(woPoints, { dotColor: '#5dcaa5', yMin: 0, yMax: 1 }),
-          xL,
-        )}
-        ${trendWidget(
-          `sleep · ${cfg.label}`,
-          sleepAvg != null ? `${sleepAvg.toFixed(1)}<span class="unit">h avg</span>` : '—<span class="unit">no data</span>',
-          sleepVals.length ? `${sleepVals.length} ${cfg.bucket}s logged` : 'capture: "slept 8h"',
-          sparkline(sleepPoints, { zones: sleepZones, dotColor: '#85b7eb', yMin: 0, yMax: 12 }),
-          xL,
-        )}
-        ${trendWidget(
-          `screen · ${cfg.label}`,
-          screenAvg != null ? `${screenAvg.toFixed(1)}<span class="unit">h avg</span>` : '—<span class="unit">no data</span>',
-          screenVals.length ? `${screenVals.length} ${cfg.bucket}s logged` : 'pending MacroDroid',
-          sparkline(screenPoints, { zones: screenZones, dotColor: '#afa9ec', yMin: 0, yMax: 12 }),
           xL,
         )}
       `;

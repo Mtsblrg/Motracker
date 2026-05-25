@@ -1080,19 +1080,23 @@
 
   // ---- trackers ----
   // Storage model (all in `metrics` table, source='tracker'):
-  //   metric_type='habit',       unit='workout'  value 0|1  toggle
-  //   metric_type='coffee',      unit='cups'     value N    counter, soft cap 3
-  //   metric_type='water',       unit='ml'       value N    counter, +500ml steps, target 2000
-  //   metric_type='cig_factory', unit='cigs'     value N    counter, target 0
-  //   metric_type='cig_rolled',  unit='cigs'     value N    counter, target 0
-  //   metric_type='apartment',   unit in (dishes,clothes,bathroom,living)  value 0|1  toggle
+  //   metric_type='workout_done',   unit='done'   value 0|1  toggle  — trained (gym, run, structured session)
+  //   metric_type='workout_active', unit='done'   value 0|1  toggle  — moved (long walk, hike, manual labor, sport with friends)
+  //     ^ workout_done and workout_active are SEPARATE activities, not states. Both can be true on the same day.
+  //   metric_type='coffee',         unit='cups'   value N    counter, soft cap 3
+  //   metric_type='water',          unit='ml'     value N    counter, +500ml steps, target 2000
+  //   metric_type='cig_factory',    unit='cigs'   value N    counter, target 0  — factory-rolled cigarettes
+  //   metric_type='cig_rolled',     unit='cigs'   value N    counter, target 0  — hand-rolled cigarettes
+  //     ^ cig_factory and cig_rolled are also SEPARATE — different products, tracked separately by intent.
+  //   metric_type='apartment',      unit in (dishes,clothes,bathroom,living)  value 0|1  toggle
   // Apartment score (X/4 clean) is derived at read time — never stored.
   const TODAY_TRACKERS = [
-    { key: 'workout',     metric_type: 'habit',       unit: 'workout', kind: 'toggle',  label: 'workout',       span2: true },
-    { key: 'coffee',      metric_type: 'coffee',      unit: 'cups',    kind: 'counter', label: 'coffee',  step: 1,   softCap: 3,    unitLabel: '/3 cups' },
-    { key: 'water',       metric_type: 'water',       unit: 'ml',      kind: 'counter', label: 'water',   step: 500, target: 2000,  unitLabel: '/2000ml' },
-    { key: 'cig_factory', metric_type: 'cig_factory', unit: 'cigs',    kind: 'counter', label: 'cig (factory)', step: 1, target: 0, unitLabel: 'cigs' },
-    { key: 'cig_rolled',  metric_type: 'cig_rolled',  unit: 'cigs',    kind: 'counter', label: 'cig (rolled)',  step: 1, target: 0, unitLabel: 'cigs' },
+    { key: 'workout_done',   metric_type: 'workout_done',   unit: 'done', kind: 'toggle',  label: 'workout' },
+    { key: 'workout_active', metric_type: 'workout_active', unit: 'done', kind: 'toggle',  label: 'active day' },
+    { key: 'coffee',         metric_type: 'coffee',         unit: 'cups', kind: 'counter', label: 'coffee',        step: 1,   softCap: 3,    unitLabel: '/3 cups' },
+    { key: 'water',          metric_type: 'water',          unit: 'ml',   kind: 'counter', label: 'water',         step: 500, target: 2000,  unitLabel: '/2000ml' },
+    { key: 'cig_factory',    metric_type: 'cig_factory',    unit: 'cigs', kind: 'counter', label: 'cig (factory)', step: 1,   target: 0,     unitLabel: 'cigs' },
+    { key: 'cig_rolled',     metric_type: 'cig_rolled',     unit: 'cigs', kind: 'counter', label: 'cig (rolled)',  step: 1,   target: 0,     unitLabel: 'cigs' },
   ];
   const APARTMENT_TRACKERS = [
     { key: 'apt_dishes',   metric_type: 'apartment', unit: 'dishes',   kind: 'toggle', label: 'dishes' },

@@ -212,8 +212,13 @@
   }
 
   // ---- tracker config (mirrors index.html) ----
+  // workout_done   = trained (gym, run, structured session)
+  // workout_active = moved (long walk, hike, manual labor, sport with friends)
+  // Both are SEPARATE activities, not states. Both can be true on the same day.
+  // cig_factory and cig_rolled are also SEPARATE — different products, tracked separately by intent.
   const HABIT_TRACKERS = [
-    { key: 'workout', metric_type: 'habit', unit: 'workout', label: 'workout' },
+    { key: 'workout_done',   metric_type: 'workout_done',   unit: 'done', label: 'workout' },
+    { key: 'workout_active', metric_type: 'workout_active', unit: 'done', label: 'active day' },
   ];
   const COUNTER_TRACKERS = [
     { key: 'coffee',      metric_type: 'coffee',      unit: 'cups', label: 'coffee',     softCap: 3,    fmt: v => `${v}` },
