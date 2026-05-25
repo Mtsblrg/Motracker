@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <meta name="theme-color" content="#0d0f12" />
 <title>Motracker — today</title>
+<link rel="stylesheet" href="./nav.css" />
+<script src="./nav.js" defer></script>
 <style>
   :root {
     --bg: #0d0f12;
@@ -594,18 +596,6 @@
 </head>
 <body>
 
-<header>
-  <h1 id="title">motracker</h1>
-  <div class="header-right">
-    <span class="date" id="date">—</span>
-    <a class="nav" href="./budget.html">budget →</a>
-    <a class="nav" href="./spend.html">spend →</a>
-    <a class="nav" href="./capture.html">captures →</a>
-  </div>
-</header>
-
-<a class="back-today" id="backToday" href="./">← back to today</a>
-
 <div class="capture" id="capture">
   <textarea id="captureInput" rows="1" placeholder="capture anything..."></textarea>
   <div class="capture-bar">
@@ -667,24 +657,6 @@
 
 <div class="toast" id="toast"></div>
 
-<div class="modal-backdrop" id="calBackdrop">
-  <div class="modal">
-    <div class="modal-title">
-      <span>pick a day</span>
-      <button class="modal-close" id="calClose">✕</button>
-    </div>
-    <div class="cal-nav">
-      <button class="cal-nav-btn" id="calPrev">‹</button>
-      <span class="cal-month-label" id="calMonthLabel">—</span>
-      <button class="cal-nav-btn" id="calNext">›</button>
-    </div>
-    <div class="cal-grid" id="calGrid"></div>
-    <div class="cal-foot">
-      <button id="calToday">jump to today</button>
-    </div>
-  </div>
-</div>
-
 <div class="modal-backdrop" id="editBackdrop">
   <div class="modal edit-modal">
     <div class="modal-title">
@@ -700,6 +672,11 @@
 </div>
 
 <script>
+  // Init shared nav
+  window.addEventListener('DOMContentLoaded', () => {
+    MotrackerNav.init({ active: 'today', title: 'motracker' });
+  });
+
   const SUPABASE_URL = "https://fwqhomgawlgicqiqqqhw.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ3cWhvbWdhd2xnaWNxaXFxcWh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyMTE1NDYsImV4cCI6MjA5Mjc4NzU0Nn0.LF82rWM0rX5FKY0Qo5Vsym_VWgV2reL_U8LkHbfWVHI";
   const CAPTURE_FN_URL = `${SUPABASE_URL}/functions/v1/capture`;
@@ -1319,20 +1296,7 @@
   }
 
   function renderHeader() {
-    const dateEl = document.getElementById('date');
-    const titleEl = document.getElementById('title');
-    const backEl = document.getElementById('backToday');
-    if (IS_PAST) {
-      dateEl.textContent = fmtLongDate(VIEW_DATE);
-      dateEl.classList.add('past');
-      titleEl.classList.add('past');
-      backEl.classList.add('show');
-    } else {
-      dateEl.textContent = fmtShortDate(TODAY);
-      dateEl.classList.remove('past');
-      titleEl.classList.remove('past');
-      backEl.classList.remove('show');
-    }
+    // Header is now managed by shared nav.js — no-op here.
   }
 
   function renderAll() {
@@ -1562,73 +1526,7 @@
     if (e.target.id === 'editBackdrop') closeEditModal();
   });
 
-  let CAL_MONTH = null;
-  const DOW_LABELS = ['mo','tu','we','th','fr','sa','su'];
-  function openCalendar() {
-    const [y, m] = VIEW_DATE.split('-').map(Number);
-    CAL_MONTH = { year: y, month: m - 1 };
-    renderCalendar();
-    document.getElementById('calBackdrop').classList.add('show');
-  }
-  function closeCalendar() {
-    document.getElementById('calBackdrop').classList.remove('show');
-  }
-  function renderCalendar() {
-    const { year, month } = CAL_MONTH;
-    const monthName = new Date(year, month, 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }).toLowerCase();
-    document.getElementById('calMonthLabel').textContent = monthName;
-    const grid = document.getElementById('calGrid');
-    let html = DOW_LABELS.map(d => `<div class="cal-dow">${d}</div>`).join('');
-    const firstDay = new Date(year, month, 1);
-    let startOffset = firstDay.getDay() - 1;
-    if (startOffset < 0) startOffset = 6;
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const daysInPrev = new Date(year, month, 0).getDate();
-    for (let i = startOffset - 1; i >= 0; i--) {
-      const d = daysInPrev - i;
-      html += `<button class="cal-day other-month" disabled>${d}</button>`;
-    }
-    for (let d = 1; d <= daysInMonth; d++) {
-      const iso = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-      const isFuture = iso > TODAY;
-      const isToday = iso === TODAY;
-      const isSelected = iso === VIEW_DATE;
-      const cls = ['cal-day',
-        isToday ? 'today' : '',
-        isSelected ? 'selected' : '',
-        isFuture ? 'future' : ''].filter(Boolean).join(' ');
-      html += `<button class="${cls}" data-date="${iso}" ${isFuture ? 'disabled' : ''}>${d}</button>`;
-    }
-    const totalCells = startOffset + daysInMonth;
-    const remaining = (Math.ceil(totalCells / 7) * 7) - totalCells;
-    for (let i = 1; i <= remaining; i++) {
-      html += `<button class="cal-day other-month" disabled>${i}</button>`;
-    }
-    grid.innerHTML = html;
-    grid.querySelectorAll('.cal-day[data-date]').forEach(btn => {
-      btn.addEventListener('click', () => navigateToDate(btn.dataset.date));
-    });
-  }
-  function navigateToDate(iso) {
-    if (iso === TODAY) window.location.href = './';
-    else window.location.href = `./?date=${iso}`;
-  }
-  document.getElementById('date').addEventListener('click', openCalendar);
-  document.getElementById('calClose').addEventListener('click', closeCalendar);
-  document.getElementById('calBackdrop').addEventListener('click', e => {
-    if (e.target.id === 'calBackdrop') closeCalendar();
-  });
-  document.getElementById('calPrev').addEventListener('click', () => {
-    CAL_MONTH.month--;
-    if (CAL_MONTH.month < 0) { CAL_MONTH.month = 11; CAL_MONTH.year--; }
-    renderCalendar();
-  });
-  document.getElementById('calNext').addEventListener('click', () => {
-    CAL_MONTH.month++;
-    if (CAL_MONTH.month > 11) { CAL_MONTH.month = 0; CAL_MONTH.year++; }
-    renderCalendar();
-  });
-  document.getElementById('calToday').addEventListener('click', () => navigateToDate(TODAY));
+  // Calendar modal + date pill are managed by shared nav.js.
 
   let pressState = null;
   let ARMED = null;
