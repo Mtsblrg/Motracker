@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <meta name="theme-color" content="#0d0f12" />
 <title>Motracker — captures</title>
+<link rel="stylesheet" href="./nav.css" />
+<script src="./nav.js" defer></script>
 <style>
   :root {
     --bg: #0d0f12;
@@ -32,15 +34,6 @@
     line-height: 1.5;
     min-height: 100vh;
   }
-
-  header {
-    display: flex; align-items: baseline; justify-content: space-between;
-    margin-bottom: 18px; padding: 4px 4px 0;
-  }
-  header h1 { font-size: 20px; font-weight: 600; letter-spacing: -0.5px; color: var(--accent); }
-  .header-right { display: flex; align-items: baseline; gap: 14px; }
-  .header-right .nav { font-size: 13px; color: var(--text-faint); text-decoration: none; }
-  .header-right .nav:hover { color: var(--accent); }
 
   .capture {
     background: var(--surface); border: 1px solid var(--border-strong);
@@ -194,13 +187,6 @@
 </head>
 <body>
 
-<header>
-  <h1>captures</h1>
-  <div class="header-right">
-    <a class="nav" href="./">← today</a>
-  </div>
-</header>
-
 <div class="capture" id="capture">
   <textarea id="captureInput" rows="1" placeholder="capture anything..."></textarea>
   <div class="capture-bar">
@@ -230,6 +216,11 @@
 </div>
 
 <script>
+  // Init shared nav (injects header + tab bar + calendar modal)
+  window.addEventListener('DOMContentLoaded', () => {
+    MotrackerNav.init({ active: 'captures', title: 'captures' });
+  });
+
   // ============================================
   // CONFIG
   // ============================================
