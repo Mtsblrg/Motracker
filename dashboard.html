@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#0d0f12" />
+<title>Motracker — dashboard</title>
+<style>
+  :root {
+    --bg: #0d0f12;
+    --surface: #161a20;
+    --surface-hover: #1c2026;
+    --border: #22262c;
+    --border-strong: #2a2d33;
+    --text: #e8e8e8;
+    --text-dim: #a8acb4;
+    --text-faint: #6a6e76;
+    --accent: #c4f060;
+    --accent-dim: #9bb84c;
+    --spend: #f0a955;
+    --spend-dim: #ba7517;
+    --danger: #f0796e;
+    --danger-bg: rgba(240, 121, 110, 0.15);
+    --edit: #85b7eb;
+
+    --zone-good: #639922;
+    --zone-good-bg: rgba(99, 153, 34, 0.18);
+    --zone-mid:  #ba7517;
+    --zone-mid-bg:  rgba(186, 117, 23, 0.18);
+    --zone-bad:  #e24b4a;
+    --zone-bad-bg:  rgba(226, 75, 74, 0.18);
+    --zone-low:  #85b7eb;
+    --zone-low-bg:  rgba(55, 138, 221, 0.15);
+
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { background: var(--bg); }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    color: var(--text);
+    padding: 16px 16px 80px;
+    max-width: 460px;
+    margin: 0 auto;
+    font-size: 15px;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+
+  header {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 14px; padding: 4px 4px 0;
+  }
+  header h1 { font-size: 20px; font-weight: 600; letter-spacing: -0.5px; color: var(--accent); }
+  .header-right { display: flex; align-items: baseline; gap: 14px; }
+  .header-right .nav { font-size: 13px; color: var(--text-faint); text-decoration: none; }
+  .header-right .nav:hover { color: var(--accent); }
+
+  /* TAB BAR */
+  .tabs {
+    display: flex; gap: 4px; margin-bottom: 18px;
+    background: var(--surface); border: 1px solid var(--border-strong);
+    border-radius: var(--radius); padding: 4px;
+  }
+  .tab {
+    flex: 1; text-align: center; padding: 8px 0;
+    font-size: 13px; font-weight: 600; letter-spacing: 1px;
+    color: var(--text-dim); cursor: pointer;
+    border-radius: 10px; background: transparent;
+    border: none; font-family: inherit;
+    text-transform: uppercase;
+    transition: background 0.15s, color 0.15s;
+  }
+  .tab:active { background: var(--surface-hover); }
+  .tab.active { background: var(--bg); color: var(--accent); }
+
+  /* CYCLE POT (D tab only) — style C pace bar */
+  .cycle-card {
+    background: var(--surface); border: 1px solid var(--border-strong);
+    border-radius: var(--radius); padding: 16px; margin-bottom: 14px;
+  }
+  .cycle-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 4px;
+  }
+  .cycle-label {
+    font-size: 11px; font-weight: 600; letter-spacing: 1.5px;
+    text-transform: uppercase; color: var(--text-dim);
+  }
+  .cycle-gap {
+    font-size: 12px; font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+  .cycle-gap.ahead { color: var(--zone-good); }
+  .cycle-gap.behind { color: var(--zone-bad); }
+  .cycle-amount {
+    font-size: 28px; font-weight: 600; color: var(--text);
+    letter-spacing: -0.4px; font-variant-numeric: tabular-nums;
+    margin-bottom: 2px; line-height: 1.15;
+  }
+  .cycle-amount .unit {
+    font-size: 14px; font-weight: 400; color: var(--text-dim);
+    margin-left: 4px;
+  }
+  .cycle-sub {
+    font-size: 12px; color: var(--text-faint); margin-bottom: 14px;
+    font-variant-numeric: tabular-nums;
+  }
+  .pace-bar {
+    position: relative; height: 24px; background: var(--border);
+    border-radius: 6px; overflow: hidden;
+  }
+  .pace-should {
+    position: absolute; top: 0; left: 0; height: 100%;
+    background: rgba(196, 240, 96, 0.18);
+    border-radius: 6px;
+  }
+  .pace-actual {
+    position: absolute; top: 4px; bottom: 4px; left: 0;
+    background: var(--accent); border-radius: 4px;
+  }
+  .pace-actual.over { background: var(--spend); }
+  .pace-marker {
+    position: absolute; top: -2px; bottom: -2px;
+    width: 2px; background: var(--text);
+  }
+  .cycle-foot {
+    display: flex; justify-content: space-between;
+    font-size: 12px; color: var(--text-dim); margin-top: 8px;
+    font-variant-numeric: tabular-nums;
+  }
+  .cycle-foot .day { color: var(--text); font-weight: 500; }
+
+  .widget {
+    background: var(--surface); border: 1px solid var(--border-strong);
+    border-radius: var(--radius); padding: 14px 16px; margin-bottom: 12px;
+  }
+  .widget-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 8px;
+  }
+  .widget-label {
+    font-size: 11px; font-weight: 600; letter-spacing: 1.5px;
+    text-transform: uppercase; color: var(--text-dim);
+  }
+  .widget-status {
+    font-size: 12px; font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+  .widget-status.good { color: var(--zone-good); }
+  .widget-status.mid  { color: var(--zone-mid); }
+  .widget-status.bad  { color: var(--zone-bad); }
+  .widget-status.low  { color: var(--zone-low); }
+  .widget-value {
+    font-size: 22px; font-weight: 600; color: var(--text);
+    letter-spacing: -0.3px; font-variant-numeric: tabular-nums;
+    margin-bottom: 10px; line-height: 1.15;
+  }
+  .widget-value .unit {
+    font-size: 13px; font-weight: 400; color: var(--text-dim);
+    margin-left: 4px;
+  }
+  .widget-value .sub {
+    font-size: 12px; font-weight: 400; color: var(--text-faint);
+    margin-left: 6px;
+  }
+
+  .zone-bar {
+    position: relative; height: 14px; border-radius: 7px;
+    overflow: hidden; display: flex;
+  }
+  .zone-bar .zone-seg { height: 100%; }
+  .zone-bar .marker {
+    position: absolute; top: -3px; bottom: -3px;
+    width: 3px; background: var(--text);
+    border-radius: 2px;
+    box-shadow: 0 0 0 1px var(--bg);
+  }
+  .zone-foot {
+    display: flex; justify-content: space-between;
+    font-size: 10px; color: var(--text-faint); margin-top: 6px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .tobacco-week {
+    display: flex; gap: 6px; margin-top: 8px;
+  }
+  .tob-day {
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    gap: 4px;
+  }
+  .tob-dot {
+    width: 100%; height: 6px; border-radius: 3px;
+    background: var(--border);
+  }
+  .tob-dot.good { background: var(--zone-good); }
+  .tob-dot.mid  { background: var(--zone-mid); }
+  .tob-dot.bad  { background: var(--zone-bad); }
+  .tob-dot.free { background: var(--zone-low); opacity: 0.6; }
+  .tob-label {
+    font-size: 9px; color: var(--text-faint);
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .tob-label.today { color: var(--accent); font-weight: 600; }
+  .tob-label.free  { color: var(--zone-low); }
+
+  .workout-dots {
+    display: flex; gap: 14px; align-items: center; margin-top: 4px;
+  }
+  .wo-dot {
+    display: flex; align-items: center; gap: 8px;
+  }
+  .wo-circle {
+    width: 18px; height: 18px; border-radius: 50%;
+    border: 2px solid var(--border-strong);
+  }
+  .wo-circle.filled { background: var(--zone-good); border-color: var(--zone-good); }
+  .wo-text { font-size: 13px; color: var(--text-dim); }
+  .wo-text.filled { color: var(--text); }
+
+  .placeholder-note {
+    font-size: 11px; color: var(--text-faint); font-style: italic;
+    margin-top: 4px;
+  }
+
+  .trend-widget {
+    background: var(--surface); border: 1px solid var(--border-strong);
+    border-radius: var(--radius); padding: 14px 16px; margin-bottom: 12px;
+  }
+  .trend-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 4px;
+  }
+  .trend-label {
+    font-size: 11px; font-weight: 600; letter-spacing: 1.5px;
+    text-transform: uppercase; color: var(--text-dim);
+  }
+  .trend-summary {
+    font-size: 12px; color: var(--text-faint);
+    font-variant-numeric: tabular-nums;
+  }
+  .trend-value {
+    font-size: 18px; font-weight: 600; color: var(--text);
+    font-variant-numeric: tabular-nums;
+    margin-bottom: 8px;
+  }
+  .trend-value .unit {
+    font-size: 12px; font-weight: 400; color: var(--text-dim);
+    margin-left: 4px;
+  }
+  .trend-value .sub {
+    font-size: 12px; font-weight: 400; color: var(--text-faint);
+    margin-left: 6px;
+  }
+  .sparkline-wrap {
+    position: relative; width: 100%; height: 56px;
+  }
+  .sparkline-wrap svg {
+    width: 100%; height: 100%; display: block;
+  }
+  .trend-xaxis {
+    display: flex; justify-content: space-between;
+    font-size: 9px; color: var(--text-faint); margin-top: 4px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .loading {
+    padding: 18px 16px; text-align: center; font-size: 13px;
+    color: var(--text-faint);
+  }
+  .error-msg {
+    padding: 14px 16px; font-size: 13px; color: var(--danger);
+    background: rgba(240, 121, 110, 0.08); border: 1px solid rgba(240, 121, 110, 0.25);
+    border-radius: var(--radius);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>motracker</h1>
+  <div class="header-right">
+    <a class="nav" href="./">today →</a>
+    <a class="nav" href="./budget.html">budget →</a>
+  </div>
+</header>
+
+<div class="tabs" id="tabs">
+  <button class="tab active" data-tab="D">D</button>
+  <button class="tab" data-tab="W">W</button>
+  <button class="tab" data-tab="M">M</button>
+  <button class="tab" data-tab="Q">Q</button>
+  <button class="tab" data-tab="Y">Y</button>
+</div>
+
+<div id="content">
+  <div class="loading">loading…</div>
+</div>
+
+<script>
+  const SUPABASE_URL = "https://fwqhomgawlgicqiqqqhw.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ3cWhvbWdhd2xnaWNxaXFxcWh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyMTE1NDYsImV4cCI6MjA5Mjc4NzU0Nn0.LF82rWM0rX5FKY0Qo5Vsym_VWgV2reL_U8LkHbfWVHI";
+  const REST = `${SUPABASE_URL}/rest/v1`;
+  const HEADERS = {
+    "apikey": SUPABASE_ANON_KEY,
+    "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+    "Content-Type": "application/json",
+  };
+
+  let GOALS = {
+    calories: 2500,
+    spend: 10000,
+    pot: 300000,
+    budgetDay: 5,
+    eurHuf: 350,
+    sleepMin: 7, sleepMax: 9,
+    screenTarget: 4,
+    calMin: 2200, calMax: 2700, calLow: 2000, calHigh: 3000,
+  };
+  const TOBACCO_LIMITS = { 0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: Infinity, 6: Infinity };
+  const DOW_LABELS = ['S','M','T','W','T','F','S'];
+
+  let TAB = 'D';
+
+  function todayISO() {
+    const fmt = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Europe/Budapest',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+    });
+    return fmt.format(new Date());
+  }
+  function addDays(iso, n) {
+    const d = new Date(iso + 'T00:00:00');
+    d.setDate(d.getDate() + n);
+    return d.toISOString().slice(0, 10);
+  }
+  function fmt(n) {
+    return Math.round(n).toLocaleString('en-US').replace(/,/g, ' ');
+  }
+  function escapeHtml(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[c]));
+  }
+
+  const TODAY = todayISO();
+
+  async function sbGet(path) {
+    const res = await fetch(`${REST}/${path}`, { headers: HEADERS });
+    if (!res.ok) throw new Error(`GET ${path}: ${res.status}`);
+    return res.json();
+  }
+
+  async function loadGoals() {
+    try {
+      const rows = await sbGet(`settings?key=in.(daily_calorie_target,daily_spend_target_huf,monthly_budget_huf,budget_day,eur_huf_rate,sleep_target_min,sleep_target_max,screen_time_target,cal_band_min,cal_band_max,cal_low_threshold,cal_high_threshold)`);
+      rows.forEach(r => {
+        if (r.key === "daily_calorie_target")     GOALS.calories = +r.value;
+        if (r.key === "daily_spend_target_huf")   GOALS.spend    = +r.value;
+        if (r.key === "monthly_budget_huf")       GOALS.pot      = +r.value;
+        if (r.key === "budget_day")               GOALS.budgetDay = +r.value;
+        if (r.key === "eur_huf_rate")             GOALS.eurHuf   = +r.value;
+        if (r.key === "sleep_target_min")         GOALS.sleepMin = +r.value;
+        if (r.key === "sleep_target_max")         GOALS.sleepMax = +r.value;
+        if (r.key === "screen_time_target")       GOALS.screenTarget = +r.value;
+        if (r.key === "cal_band_min")             GOALS.calMin = +r.value;
+        if (r.key === "cal_band_max")             GOALS.calMax = +r.value;
+        if (r.key === "cal_low_threshold")        GOALS.calLow = +r.value;
+        if (r.key === "cal_high_threshold")       GOALS.calHigh = +r.value;
+      });
+    } catch (e) { console.warn("goals load failed", e); }
+  }
+
+  function budgetCycle(refDate) {
+    const day = GOALS.budgetDay || 5;
+    const [y, m, d] = refDate.split('-').map(Number);
+    let startY = y, startM = m;
+    if (d < day) { startM -= 1; if (startM < 1) { startM = 12; startY -= 1; } }
+    let endY = startY, endM = startM + 1;
+    if (endM > 12) { endM = 1; endY += 1; }
+    const lastDayOfEndM = new Date(endY, endM, 0).getDate();
+    const endD = Math.min(day - 1, lastDayOfEndM);
+    const start = `${startY}-${String(startM).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const end   = `${endY}-${String(endM).padStart(2, '0')}-${String(endD).padStart(2, '0')}`;
+    return { cycleStart: start, cycleEnd: end };
+  }
+  function daysBetween(aISO, bISO) {
+    const a = new Date(aISO + 'T00:00:00');
+    const b = new Date(bISO + 'T00:00:00');
+    return Math.round((b - a) / 86400000);
+  }
+
+  async function loadDayData() {
+    const { cycleStart, cycleEnd } = budgetCycle(TODAY);
+    const cycleEnd1 = TODAY < cycleEnd ? TODAY : cycleEnd;
+
+    const [todayMetrics, cycleSpend, weekTobacco] = await Promise.all([
+      sbGet(`metrics?date=eq.${TODAY}&select=metric_type,value,unit,tags`),
+      sbGet(`metrics?metric_type=eq.spend&date=gte.${cycleStart}&date=lte.${cycleEnd1}&select=value,unit,tags,date`),
+      sbGet(`metrics?metric_type=eq.tobacco&date=gte.${addDays(TODAY, -6)}&date=lte.${TODAY}&select=value,date`),
+    ]);
+
+    let spendToday = 0, calToday = 0, tobToday = 0;
+    let sleepToday = null, screenToday = null;
+    let workoutActive = false, workoutDone = false;
+    for (const r of todayMetrics) {
+      const v = +r.value;
+      const huf = r.unit === 'EUR' ? v * GOALS.eurHuf : v;
+      const isRecurring = Array.isArray(r.tags) && r.tags.includes('recurring');
+      if (r.metric_type === 'spend' && !isRecurring) spendToday += huf;
+      if (r.metric_type === 'calories') calToday += v;
+      if (r.metric_type === 'tobacco') tobToday += v;
+      if (r.metric_type === 'sleep_hours') sleepToday = v;
+      if (r.metric_type === 'screen_time_hours') screenToday = v;
+      if (r.metric_type === 'workout_active') workoutActive = v > 0;
+      if (r.metric_type === 'workout_done') workoutDone = v > 0;
+    }
+
+    let cycleDiscretionary = 0;
+    for (const r of cycleSpend) {
+      const huf = r.unit === 'EUR' ? +r.value * GOALS.eurHuf : +r.value;
+      const isRecurring = Array.isArray(r.tags) && r.tags.includes('recurring');
+      if (!isRecurring) cycleDiscretionary += huf;
+    }
+    const daysTotal     = daysBetween(cycleStart, cycleEnd) + 1;
+    const dayN          = daysBetween(cycleStart, TODAY) + 1;
+    const daysRemaining = Math.max(0, daysBetween(TODAY, cycleEnd));
+
+    const tobByDate = {};
+    for (const r of weekTobacco) {
+      tobByDate[r.date] = (tobByDate[r.date] || 0) + (+r.value || 0);
+    }
+
+    return {
+      spendToday, calToday, tobToday, sleepToday, screenToday,
+      workoutActive, workoutDone,
+      cycle: {
+        cycleStart, cycleEnd, dayN, daysTotal, daysRemaining,
+        spent: Math.round(cycleDiscretionary),
+        pot: GOALS.pot,
+      },
+      tobByDate,
+    };
+  }
+
+  function renderD(data) {
+    const root = document.getElementById('content');
+    root.innerHTML = `
+      ${renderCycleCard(data.cycle)}
+      ${renderSpendWidget(data.spendToday)}
+      ${renderCaloriesWidget(data.calToday)}
+      ${renderTobaccoWidget(data.tobToday, data.tobByDate)}
+      ${renderWorkoutWidget(data.workoutActive, data.workoutDone)}
+      ${renderSleepWidget(data.sleepToday)}
+      ${renderScreenWidget(data.screenToday)}
+    `;
+  }
+
+  function renderCycleCard(c) {
+    const remaining = c.pot - c.spent;
+    const overPot = remaining < 0;
+    const targetByNow = Math.round(c.pot * (c.dayN / c.daysTotal));
+    const gap = targetByNow - c.spent;
+    const ahead = gap >= 0;
+    const perDayRemaining = c.daysRemaining > 0
+      ? Math.floor(Math.max(0, remaining) / Math.max(1, c.daysRemaining + 1))
+      : Math.max(0, remaining);
+
+    const shouldPct = Math.min(100, (targetByNow / c.pot) * 100);
+    const actualPct = Math.min(100, (c.spent / c.pot) * 100);
+
+    let heroLabel, heroAmount, sub;
+    if (!overPot) {
+      heroLabel = 'left per day in cycle';
+      heroAmount = fmt(perDayRemaining);
+      sub = `${fmt(remaining)} left in pot · ${c.daysRemaining} days to go`;
+    } else {
+      heroLabel = 'over the pot';
+      heroAmount = fmt(-remaining);
+      sub = `${c.daysRemaining} days still to go`;
+    }
+
+    const gapText = ahead
+      ? `${fmt(gap)} under pace`
+      : `${fmt(-gap)} over pace`;
+
+    return `
+      <div class="cycle-card">
+        <div class="cycle-head">
+          <span class="cycle-label">${escapeHtml(heroLabel)}</span>
+          <span class="cycle-gap ${ahead ? 'ahead' : 'behind'}">${escapeHtml(gapText)}</span>
+        </div>
+        <div class="cycle-amount">${heroAmount}<span class="unit">HUF</span></div>
+        <div class="cycle-sub">${escapeHtml(sub)}</div>
+        <div class="pace-bar">
+          <div class="pace-should" style="width:${shouldPct}%"></div>
+          <div class="pace-actual ${overPot ? 'over' : ''}" style="width:${actualPct}%"></div>
+          <div class="pace-marker" style="left:${shouldPct}%"></div>
+        </div>
+        <div class="cycle-foot">
+          <span>day <span class="day">${c.dayN}/${c.daysTotal}</span></span>
+          <span>${fmt(c.spent)} / ${fmt(c.pot)} HUF</span>
+        </div>
+      </div>
+    `;
+  }
+
+  function zoneBar(zones, value, max) {
+    const segs = zones.map(z =>
+      `<div class="zone-seg" style="flex:${z.weight}; background:${z.color}"></div>`
+    ).join('');
+    const pos = Math.min(100, Math.max(0, (value / max) * 100));
+    return `
+      <div class="zone-bar">
+        ${segs}
+        <div class="marker" style="left:${pos}%"></div>
+      </div>
+    `;
+  }
+
+  function renderSpendWidget(spend) {
+    const target = GOALS.spend;
+    const max = target * 2;
+    const status = spend <= target ? 'good' : spend <= target * 1.5 ? 'mid' : 'bad';
+    const statusText = spend <= target
+      ? `${fmt(target - spend)} HUF left`
+      : `${fmt(spend - target)} HUF over`;
+    return `
+      <div class="widget">
+        <div class="widget-head">
+          <span class="widget-label">spend today</span>
+          <span class="widget-status ${status}">${escapeHtml(statusText)}</span>
+        </div>
+        <div class="widget-value">${fmt(spend)}<span class="unit">HUF</span><span class="sub">/ ${fmt(target)}</span></div>
+        ${zoneBar([
+          { weight: 2, color: 'var(--zone-good-bg)' },
+          { weight: 1, color: 'var(--zone-mid-bg)' },
+          { weight: 1, color: 'var(--zone-bad-bg)' },
+        ], spend, max)}
+        <div class="zone-foot">
+          <span>0</span><span>${fmt(target)}</span><span>${fmt(max)}+</span>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderCaloriesWidget(cal) {
+    const { calLow, calMin, calMax, calHigh } = GOALS;
+    const max = calHigh + 500;
+    let status, statusText;
+    if (cal < calLow)       { status = 'low'; statusText = `${fmt(calMin - cal)} below band`; }
+    else if (cal < calMin)  { status = 'mid'; statusText = `${fmt(calMin - cal)} below band`; }
+    else if (cal <= calMax) { status = 'good'; statusText = 'in band'; }
+    else if (cal <= calHigh){ status = 'mid'; statusText = `${fmt(cal - calMax)} over band`; }
+    else                    { status = 'bad'; statusText = `${fmt(cal - calMax)} over band`; }
+
+    return `
+      <div class="widget">
+        <div class="widget-head">
+          <span class="widget-label">calories today</span>
+          <span class="widget-status ${status}">${escapeHtml(statusText)}</span>
+        </div>
+        <div class="widget-value">${fmt(cal)}<span class="unit">kcal</span><span class="sub">band ${fmt(calMin)}–${fmt(calMax)}</span></div>
+        ${zoneBar([
+          { weight: calLow,           color: 'var(--zone-bad-bg)' },
+          { weight: calMin - calLow,  color: 'var(--zone-mid-bg)' },
+          { weight: calMax - calMin,  color: 'var(--zone-good-bg)' },
+          { weight: calHigh - calMax, color: 'var(--zone-mid-bg)' },
+          { weight: max - calHigh,    color: 'var(--zone-bad-bg)' },
+        ], cal, max)}
+        <div class="zone-foot">
+          <span>0</span><span>${fmt(calMin)}</span><span>${fmt(calMax)}</span><span>${fmt(max)}</span>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderTobaccoWidget(today, byDate) {
+    const dow = new Date(TODAY + 'T00:00:00').getDay();
+    const limit = TOBACCO_LIMITS[dow];
+    const isFree = limit === Infinity;
+    let status, statusText;
+    if (isFree) {
+      status = 'low';
+      statusText = today === 0 ? 'free day · 0 logged' : `free day · ${today} logged`;
+    } else if (today === 0) {
+      status = 'good'; statusText = `0 / ${limit} today`;
+    } else if (today <= limit) {
+      status = 'mid'; statusText = `at limit (${today}/${limit})`;
+    } else {
+      status = 'bad'; statusText = `${today - limit} over limit`;
+    }
+
+    let streak = 0;
+    for (let i = 0; i < 7; i++) {
+      const iso = addDays(TODAY, -i);
+      const d = new Date(iso + 'T00:00:00').getDay();
+      const lim = TOBACCO_LIMITS[d];
+      const cnt = byDate[iso] || 0;
+      if (cnt <= lim) streak++;
+      else break;
+    }
+
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+      const iso = addDays(TODAY, -i);
+      const d = new Date(iso + 'T00:00:00').getDay();
+      const lim = TOBACCO_LIMITS[d];
+      const cnt = byDate[iso] || 0;
+      const isToday = iso === TODAY;
+      let cls;
+      if (lim === Infinity) cls = 'free';
+      else if (cnt === 0) cls = 'good';
+      else if (cnt <= lim) cls = 'mid';
+      else cls = 'bad';
+      days.push({ iso, dow: d, cnt, lim, cls, isToday });
+    }
+
+    const dotsHtml = days.map(d => {
+      const dowLetter = DOW_LABELS[d.dow];
+      const labelCls = d.isToday ? 'today' : (d.lim === Infinity ? 'free' : '');
+      return `
+        <div class="tob-day">
+          <div class="tob-dot ${d.cls}"></div>
+          <span class="tob-label ${labelCls}">${dowLetter}</span>
+        </div>
+      `;
+    }).join('');
+
+    return `
+      <div class="widget">
+        <div class="widget-head">
+          <span class="widget-label">tobacco</span>
+          <span class="widget-status ${status}">${escapeHtml(statusText)}</span>
+        </div>
+        <div class="widget-value">${today}<span class="unit">today</span><span class="sub">streak ${streak}d</span></div>
+        <div class="tobacco-week">${dotsHtml}</div>
+      </div>
+    `;
+  }
+
+  function renderWorkoutWidget(active, done) {
+    let status, statusText;
+    if (done) { status = 'good'; statusText = 'workout done'; }
+    else if (active) { status = 'mid'; statusText = 'active day'; }
+    else { status = 'bad'; statusText = 'sedentary'; }
+    return `
+      <div class="widget">
+        <div class="widget-head">
+          <span class="widget-label">movement</span>
+          <span class="widget-status ${status}">${escapeHtml(statusText)}</span>
+        </div>
+        <div class="workout-dots">
+          <div class="wo-dot">
+            <div class="wo-circle ${active ? 'filled' : ''}"></div>
+            <span class="wo-text ${active ? 'filled' : ''}">active day</span>
+          </div>
+          <div class="wo-dot">
+            <div class="wo-circle ${done ? 'filled' : ''}"></div>
+            <span class="wo-text ${done ? 'filled' : ''}">workout</span>
+          </div>
+        </div>
+        <div class="placeholder-note">capture: "workout" or "active" / "moved"</div>
+      </div>
+    `;
+  }
+
+  function renderSleepWidget(hours) {
+    if (hours == null) {
+      return `
+        <div class="widget">
+          <div class="widget-head">
+            <span class="widget-label">sleep</span>
+            <span class="widget-status">not logged</span>
+          </div>
+          <div class="widget-value">—<span class="sub">band ${GOALS.sleepMin}–${GOALS.sleepMax}h</span></div>
+          <div class="placeholder-note">capture: "slept 8h" or "sleep 7.5"</div>
+        </div>
+      `;
+    }
+    const { sleepMin, sleepMax } = GOALS;
+    const max = 12;
+    let status, statusText;
+    if (hours < 6)              { status = 'bad'; statusText = `${(sleepMin - hours).toFixed(1)}h short`; }
+    else if (hours < sleepMin)  { status = 'mid'; statusText = `${(sleepMin - hours).toFixed(1)}h short`; }
+    else if (hours <= sleepMax) { status = 'good'; statusText = 'in band'; }
+    else if (hours <= 10)       { status = 'mid'; statusText = `${(hours - sleepMax).toFixed(1)}h over`; }
+    else                        { status = 'bad'; statusText = `${(hours - sleepMax).toFixed(1)}h over`; }
+
+    return `
+      <div class="widget">
+        <div class="widget-head">
+          <span class="widget-label">sleep</span>
+          <span class="widget-status ${status}">${escapeHtml(statusText)}</span>
+        </div>
+        <div class="widget-value">${hours.toFixed(1)}<span class="unit">h</span><span class="sub">band ${sleepMin}–${sleepMax}h</span></div>
+        ${zoneBar([
+          { weight: 6,                color: 'var(--zone-bad-bg)' },
+          { weight: sleepMin - 6,     color: 'var(--zone-mid-bg)' },
+          { weight: sleepMax - sleepMin, color: 'var(--zone-good-bg)' },
+          { weight: 10 - sleepMax,    color: 'var(--zone-mid-bg)' },
+          { weight: max - 10,         color: 'var(--zone-bad-bg)' },
+        ], hours, max)}
+        <div class="zone-foot">
+          <span>0h</span><span>${sleepMin}h</span><span>${sleepMax}h</span><span>${max}h</span>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderScreenWidget(hours) {
+    if (hours == null) {
+      return `
+        <div class="widget">
+          <div class="widget-head">
+            <span class="widget-label">screen time</span>
+            <span class="widget-status">no data</span>
+          </div>
+          <div class="widget-value">—<span class="sub">target &lt; ${GOALS.screenTarget}h</span></div>
+          <div class="placeholder-note">pending: MacroDroid nightly push from Digital Wellbeing</div>
+        </div>
+      `;
+    }
+    const target = GOALS.screenTarget;
+    const max = 12;
+    let status, statusText;
+    if (hours < target)        { status = 'good'; statusText = `${(target - hours).toFixed(1)}h headroom`; }
+    else if (hours < target * 1.5) { status = 'mid'; statusText = `${(hours - target).toFixed(1)}h over`; }
+    else                       { status = 'bad'; statusText = `${(hours - target).toFixed(1)}h over`; }
+    return `
+      <div class="widget">
+        <div class="widget-head">
+          <span class="widget-label">screen time</span>
+          <span class="widget-status ${status}">${escapeHtml(statusText)}</span>
+        </div>
+        <div class="widget-value">${hours.toFixed(1)}<span class="unit">h</span><span class="sub">target &lt; ${target}h</span></div>
+        ${zoneBar([
+          { weight: target,         color: 'var(--zone-good-bg)' },
+          { weight: target * 0.5,   color: 'var(--zone-mid-bg)' },
+          { weight: max - target * 1.5, color: 'var(--zone-bad-bg)' },
+        ], hours, max)}
+        <div class="zone-foot">
+          <span>0h</span><span>${target}h</span><span>${max}h</span>
+        </div>
+      </div>
+    `;
+  }
+
+  const TREND_CONFIG = {
+    W: { days: 7,   bucket: 'day',   label: 'last 7 days' },
+    M: { days: 30,  bucket: 'day',   label: 'last 30 days' },
+    Q: { days: 91,  bucket: 'week',  label: 'last 13 weeks' },
+    Y: { days: 365, bucket: 'month', label: 'last 12 months' },
+  };
+
+  async function loadTrendData(tab) {
+    const cfg = TREND_CONFIG[tab];
+    const start = addDays(TODAY, -(cfg.days - 1));
+    const metrics = await sbGet(
+      `metrics?date=gte.${start}&date=lte.${TODAY}&select=metric_type,value,unit,tags,date`
+    );
+    return { metrics, cfg, start };
+  }
+
+  function aggregateDaily(metrics, type, transform = null) {
+    const byDate = {};
+    for (const r of metrics) {
+      if (r.metric_type !== type) continue;
+      let v = +r.value;
+      if (transform) v = transform(r, v);
+      if (v == null) continue;
+      byDate[r.date] = (byDate[r.date] || 0) + v;
+    }
+    return byDate;
+  }
+  function aggregateDailyAvg(metrics, type) {
+    const latest = {};
+    for (const r of metrics) {
+      if (r.metric_type !== type) continue;
+      const v = +r.value;
+      latest[r.date] = v;
+    }
+    return latest;
+  }
+
+  function bucketData(byDate, cfg, start) {
+    const points = [];
+    if (cfg.bucket === 'day') {
+      for (let i = 0; i < cfg.days; i++) {
+        const iso = addDays(start, i);
+        points.push({ date: iso, label: iso.slice(5), value: byDate[iso] ?? null });
+      }
+    } else if (cfg.bucket === 'week') {
+      const weeks = 13;
+      for (let w = weeks - 1; w >= 0; w--) {
+        const wStart = addDays(TODAY, -((w + 1) * 7 - 1));
+        let sum = 0; let any = false;
+        for (let i = 0; i < 7; i++) {
+          const iso = addDays(wStart, i);
+          if (byDate[iso] != null) { sum += byDate[iso]; any = true; }
+        }
+        points.push({ date: wStart, label: wStart.slice(5), value: any ? sum : null });
+      }
+    } else if (cfg.bucket === 'month') {
+      const now = new Date(TODAY + 'T00:00:00');
+      for (let m = 11; m >= 0; m--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - m, 1);
+        const mStart = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+        let sum = 0; let any = false;
+        for (const iso in byDate) {
+          if (iso.slice(0, 7) === mStart.slice(0, 7)) { sum += byDate[iso]; any = true; }
+        }
+        points.push({ date: mStart, label: mStart.slice(2, 7), value: any ? sum : null });
+      }
+    }
+    return points;
+  }
+  function bucketAvg(byDate, cfg, start) {
+    const points = bucketData(byDate, cfg, start);
+    if (cfg.bucket === 'day') return points;
+    return points.map(p => {
+      if (cfg.bucket === 'week') {
+        let sum = 0, n = 0;
+        for (let i = 0; i < 7; i++) {
+          const iso = addDays(p.date, i);
+          if (byDate[iso] != null) { sum += byDate[iso]; n++; }
+        }
+        return { ...p, value: n > 0 ? sum / n : null };
+      }
+      let sum = 0, n = 0;
+      for (const iso in byDate) {
+        if (iso.slice(0, 7) === p.date.slice(0, 7)) { sum += byDate[iso]; n++; }
+      }
+      return { ...p, value: n > 0 ? sum / n : null };
+    });
+  }
+
+  function sparkline(points, opts = {}) {
+    const W = 320, H = 56;
+    const padL = 4, padR = 4, padT = 4, padB = 4;
+    const vals = points.map(p => p.value).filter(v => v != null);
+    if (vals.length === 0) {
+      return `<div class="sparkline-wrap"><svg viewBox="0 0 ${W} ${H}"><text x="${W/2}" y="${H/2}" text-anchor="middle" fill="#6a6e76" font-size="11">no data</text></svg></div>`;
+    }
+    const dataMin = Math.min(...vals);
+    const dataMax = Math.max(...vals);
+    const yMin = opts.yMin != null ? opts.yMin : Math.min(dataMin, 0);
+    const yMax = opts.yMax != null ? opts.yMax : Math.max(dataMax, 1);
+    const yRange = yMax - yMin || 1;
+    const xStep = (W - padL - padR) / Math.max(1, points.length - 1);
+    function yPos(v) { return padT + (H - padT - padB) * (1 - (v - yMin) / yRange); }
+
+    let bands = '';
+    if (opts.zones) {
+      for (const z of opts.zones) {
+        const top = yPos(Math.min(z.max, yMax));
+        const bot = yPos(Math.max(z.min, yMin));
+        if (bot > top) {
+          bands += `<rect x="0" y="${top}" width="${W}" height="${bot - top}" fill="${z.color}" />`;
+        }
+      }
+    }
+
+    let path = '';
+    let lastValid = null;
+    points.forEach((p, i) => {
+      if (p.value == null) return;
+      const x = padL + i * xStep;
+      const y = yPos(p.value);
+      if (lastValid == null) path += `M ${x.toFixed(1)} ${y.toFixed(1)}`;
+      else path += ` L ${x.toFixed(1)} ${y.toFixed(1)}`;
+      lastValid = { x, y };
+    });
+
+    const last = points[points.length - 1];
+    let todayDot = '';
+    if (last && last.value != null) {
+      const x = padL + (points.length - 1) * xStep;
+      const y = yPos(last.value);
+      todayDot = `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4" fill="${opts.dotColor || '#c4f060'}" stroke="#0d0f12" stroke-width="1.5" />`;
+    }
+
+    return `
+      <div class="sparkline-wrap">
+        <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+          ${bands}
+          <path d="${path}" fill="none" stroke="#a8acb4" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+          ${todayDot}
+        </svg>
+      </div>
+    `;
+  }
+
+  function trendWidget(label, valueStr, summary, sparkHtml, xLabels) {
+    const axisHtml = xLabels && xLabels.length
+      ? `<div class="trend-xaxis">${xLabels.map(l => `<span>${escapeHtml(l)}</span>`).join('')}</div>`
+      : '';
+    return `
+      <div class="trend-widget">
+        <div class="trend-head">
+          <span class="trend-label">${escapeHtml(label)}</span>
+          <span class="trend-summary">${escapeHtml(summary)}</span>
+        </div>
+        <div class="trend-value">${valueStr}</div>
+        ${sparkHtml}
+        ${axisHtml}
+      </div>
+    `;
+  }
+
+  function xAxisLabels(points, max = 4) {
+    if (points.length === 0) return [];
+    const labels = [];
+    const step = Math.max(1, Math.floor(points.length / max));
+    for (let i = 0; i < points.length; i += step) labels.push(points[i].label);
+    if (labels.length && labels[labels.length - 1] !== points[points.length - 1].label) labels.push(points[points.length - 1].label);
+    return labels;
+  }
+
+  async function renderTrend(tab) {
+    const root = document.getElementById('content');
+    root.innerHTML = '<div class="loading">loading…</div>';
+    try {
+      const { metrics, cfg, start } = await loadTrendData(tab);
+
+      const spendBy = aggregateDaily(metrics, 'spend', (r, v) => {
+        const isRec = Array.isArray(r.tags) && r.tags.includes('recurring');
+        if (isRec) return null;
+        return r.unit === 'EUR' ? v * GOALS.eurHuf : v;
+      });
+      const spendPoints = bucketData(spendBy, cfg, start);
+      const spendVals = spendPoints.map(p => p.value).filter(v => v != null);
+      const spendAvg = spendVals.length ? spendVals.reduce((a,b)=>a+b,0) / spendVals.length : 0;
+      const spendTotal = spendVals.reduce((a,b)=>a+b, 0);
+
+      let spendZones = [];
+      if (cfg.bucket === 'day') {
+        spendZones = [
+          { min: 0, max: GOALS.spend, color: 'rgba(99, 153, 34, 0.15)' },
+          { min: GOALS.spend, max: GOALS.spend * 1.5, color: 'rgba(186, 117, 23, 0.15)' },
+          { min: GOALS.spend * 1.5, max: 1e9, color: 'rgba(226, 75, 74, 0.15)' },
+        ];
+      }
+
+      const calBy = aggregateDaily(metrics, 'calories');
+      const calPoints = bucketData(calBy, cfg, start);
+      const calVals = calPoints.map(p => p.value).filter(v => v != null);
+      const calAvg = calVals.length ? calVals.reduce((a,b)=>a+b,0) / calVals.length : 0;
+      let calZones = [];
+      if (cfg.bucket === 'day') {
+        calZones = [
+          { min: 0, max: GOALS.calLow, color: 'rgba(226, 75, 74, 0.15)' },
+          { min: GOALS.calLow, max: GOALS.calMin, color: 'rgba(186, 117, 23, 0.15)' },
+          { min: GOALS.calMin, max: GOALS.calMax, color: 'rgba(99, 153, 34, 0.15)' },
+          { min: GOALS.calMax, max: GOALS.calHigh, color: 'rgba(186, 117, 23, 0.15)' },
+          { min: GOALS.calHigh, max: 1e9, color: 'rgba(226, 75, 74, 0.15)' },
+        ];
+      }
+
+      const tobBy = aggregateDaily(metrics, 'tobacco');
+      const tobPoints = bucketData(tobBy, cfg, start);
+      const tobVals = tobPoints.map(p => p.value).filter(v => v != null);
+      const tobAvg = tobVals.length ? tobVals.reduce((a,b)=>a+b,0) / tobVals.length : 0;
+      const tobTotal = tobVals.reduce((a,b)=>a+b, 0);
+
+      const sleepBy = aggregateDailyAvg(metrics, 'sleep_hours');
+      const sleepPoints = bucketAvg(sleepBy, cfg, start);
+      const sleepVals = sleepPoints.map(p => p.value).filter(v => v != null);
+      const sleepAvg = sleepVals.length ? sleepVals.reduce((a,b)=>a+b,0) / sleepVals.length : null;
+      let sleepZones = [
+        { min: 0, max: 6, color: 'rgba(226, 75, 74, 0.15)' },
+        { min: 6, max: GOALS.sleepMin, color: 'rgba(186, 117, 23, 0.15)' },
+        { min: GOALS.sleepMin, max: GOALS.sleepMax, color: 'rgba(99, 153, 34, 0.15)' },
+        { min: GOALS.sleepMax, max: 10, color: 'rgba(186, 117, 23, 0.15)' },
+        { min: 10, max: 12, color: 'rgba(226, 75, 74, 0.15)' },
+      ];
+
+      const screenBy = aggregateDailyAvg(metrics, 'screen_time_hours');
+      const screenPoints = bucketAvg(screenBy, cfg, start);
+      const screenVals = screenPoints.map(p => p.value).filter(v => v != null);
+      const screenAvg = screenVals.length ? screenVals.reduce((a,b)=>a+b,0) / screenVals.length : null;
+      let screenZones = [
+        { min: 0, max: GOALS.screenTarget, color: 'rgba(99, 153, 34, 0.15)' },
+        { min: GOALS.screenTarget, max: GOALS.screenTarget * 1.5, color: 'rgba(186, 117, 23, 0.15)' },
+        { min: GOALS.screenTarget * 1.5, max: 12, color: 'rgba(226, 75, 74, 0.15)' },
+      ];
+
+      const woBy = aggregateDaily(metrics, 'workout_done');
+      const activeBy = aggregateDaily(metrics, 'workout_active');
+      const woPoints = bucketData(woBy, cfg, start);
+      const woDays = Object.values(woBy).filter(v => v > 0).length;
+      const activeDays = Object.values(activeBy).filter(v => v > 0).length;
+
+      const xL = xAxisLabels(spendPoints);
+
+      root.innerHTML = `
+        ${trendWidget(
+          `spend · ${cfg.label}`,
+          `${fmt(spendAvg)}<span class="unit">HUF avg / ${cfg.bucket}</span>`,
+          `total ${fmt(spendTotal)}`,
+          sparkline(spendPoints, { zones: spendZones, dotColor: '#f0a955' }),
+          xL,
+        )}
+        ${trendWidget(
+          `calories · ${cfg.label}`,
+          `${fmt(calAvg)}<span class="unit">kcal avg / ${cfg.bucket}</span>`,
+          calVals.length ? `${calVals.length} ${cfg.bucket}s logged` : 'no data',
+          sparkline(calPoints, { zones: calZones, dotColor: '#c4f060' }),
+          xL,
+        )}
+        ${trendWidget(
+          `tobacco · ${cfg.label}`,
+          `${fmt(tobAvg)}<span class="unit">avg / ${cfg.bucket}</span>`,
+          `total ${fmt(tobTotal)}`,
+          sparkline(tobPoints, { dotColor: '#f0796e' }),
+          xL,
+        )}
+        ${trendWidget(
+          `movement · ${cfg.label}`,
+          `${woDays}<span class="unit">workouts</span><span class="sub">${activeDays} active days</span>`,
+          cfg.days >= 30 ? `${Math.round(woDays / cfg.days * 100)}% workout rate` : `${woDays}/${cfg.days} days`,
+          sparkline(woPoints, { dotColor: '#5dcaa5', yMin: 0, yMax: 1 }),
+          xL,
+        )}
+        ${trendWidget(
+          `sleep · ${cfg.label}`,
+          sleepAvg != null ? `${sleepAvg.toFixed(1)}<span class="unit">h avg</span>` : '—<span class="unit">no data</span>',
+          sleepVals.length ? `${sleepVals.length} ${cfg.bucket}s logged` : 'capture: "slept 8h"',
+          sparkline(sleepPoints, { zones: sleepZones, dotColor: '#85b7eb', yMin: 0, yMax: 12 }),
+          xL,
+        )}
+        ${trendWidget(
+          `screen · ${cfg.label}`,
+          screenAvg != null ? `${screenAvg.toFixed(1)}<span class="unit">h avg</span>` : '—<span class="unit">no data</span>',
+          screenVals.length ? `${screenVals.length} ${cfg.bucket}s logged` : 'pending MacroDroid',
+          sparkline(screenPoints, { zones: screenZones, dotColor: '#afa9ec', yMin: 0, yMax: 12 }),
+          xL,
+        )}
+      `;
+    } catch (e) {
+      console.error(e);
+      root.innerHTML = `<div class="error-msg">load failed: ${escapeHtml(e.message)}</div>`;
+    }
+  }
+
+  async function switchTab(tab) {
+    TAB = tab;
+    document.querySelectorAll('.tab').forEach(t => {
+      t.classList.toggle('active', t.dataset.tab === tab);
+    });
+    if (tab === 'D') {
+      const root = document.getElementById('content');
+      root.innerHTML = '<div class="loading">loading…</div>';
+      try {
+        const data = await loadDayData();
+        renderD(data);
+      } catch (e) {
+        console.error(e);
+        root.innerHTML = `<div class="error-msg">load failed: ${escapeHtml(e.message)}</div>`;
+      }
+    } else {
+      await renderTrend(tab);
+    }
+  }
+
+  document.getElementById('tabs').addEventListener('click', e => {
+    const btn = e.target.closest('.tab');
+    if (!btn) return;
+    switchTab(btn.dataset.tab);
+  });
+
+  (async () => {
+    await loadGoals();
+    await switchTab('D');
+  })();
+</script>
+
+</body>
+</html>
