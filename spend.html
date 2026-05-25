@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <meta name="theme-color" content="#0d0f12" />
 <title>Motracker — spend</title>
+<link rel="stylesheet" href="./nav.css" />
+<script src="./nav.js" defer></script>
 <style>
   :root {
     --bg: #0d0f12;
@@ -33,15 +35,6 @@
     line-height: 1.5;
     min-height: 100vh;
   }
-
-  header {
-    display: flex; align-items: baseline; justify-content: space-between;
-    margin-bottom: 18px; padding: 4px 4px 0;
-  }
-  header h1 { font-size: 20px; font-weight: 600; letter-spacing: -0.5px; color: var(--spend); }
-  .header-right { display: flex; align-items: baseline; gap: 14px; }
-  .header-right .nav { font-size: 13px; color: var(--text-faint); text-decoration: none; }
-  .header-right .nav:hover { color: var(--accent); }
 
   section { margin-bottom: 22px; }
   .section-head {
@@ -196,18 +189,9 @@
 </head>
 <body>
 
-<header>
-  <h1>spend</h1>
-  <div class="header-right">
-    <a class="nav" href="./">← today</a>
-    <a class="nav" href="./budget.html">budget</a>
-    <a class="nav" href="./capture.html">captures →</a>
-  </div>
-</header>
-
 <section>
   <div class="section-head">
-    <h2>today</h2>
+    <h2 id="todayHeading">today</h2>
     <span class="total" id="todayTotal"></span>
   </div>
   <div class="card" id="todayCard">
@@ -227,7 +211,7 @@
 
 <section>
   <div class="section-head">
-    <h2>last 7 days</h2>
+    <h2 id="weekHeading">last 7 days</h2>
     <span class="total" id="weekTotal"></span>
   </div>
   <div class="txn-list" id="weekList">
@@ -236,6 +220,11 @@
 </section>
 
 <script>
+  // Init shared nav
+  window.addEventListener('DOMContentLoaded', () => {
+    MotrackerNav.init({ active: 'finance', sub: 'spend', title: 'spend' });
+  });
+
   const SUPABASE_URL = "https://fwqhomgawlgicqiqqqhw.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ3cWhvbWdhd2xnaWNxaXFxcWh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyMTE1NDYsImV4cCI6MjA5Mjc4NzU0Nn0.LF82rWM0rX5FKY0Qo5Vsym_VWgV2reL_U8LkHbfWVHI";
   const REST = `${SUPABASE_URL}/rest/v1`;
@@ -269,12 +258,12 @@
     return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }).toLowerCase();
   }
 
-  function fmtDayLabel(iso, todayISO) {
-    const today = new Date(todayISO + 'T00:00:00');
+  function fmtDayLabel(iso, refISO) {
+    const ref = new Date(refISO + 'T00:00:00');
     const d = new Date(iso + 'T00:00:00');
-    const diff = Math.round((today - d) / 86400000);
-    if (diff === 0) return 'today';
-    if (diff === 1) return 'yesterday';
+    const diff = Math.round((ref - d) / 86400000);
+    if (diff === 0) return 'this day';
+    if (diff === 1) return 'day -1';
     return d.toLocaleDateString('en-GB', { weekday: 'long' }).toLowerCase();
   }
 
@@ -284,13 +273,24 @@
     return res.json();
   }
 
+  // Read VIEW_DATE from shared nav (URL ?date= or today)
   const TODAY = bpDateISO();
+  const urlDate = new URLSearchParams(window.location.search).get('date');
+  const VIEW_DATE = (urlDate && /^\d{4}-\d{2}-\d{2}$/.test(urlDate) && urlDate <= TODAY)
+    ? urlDate : TODAY;
+  const IS_PAST = VIEW_DATE !== TODAY;
+
+  // Update section headings if viewing a past date
+  if (IS_PAST) {
+    document.getElementById('todayHeading').textContent = 'on this day';
+    document.getElementById('weekHeading').textContent = 'previous 7 days';
+  }
 
   function get7DayWindow() {
     const days = [];
-    const todayDate = new Date(TODAY + 'T00:00:00');
+    const refDate = new Date(VIEW_DATE + 'T00:00:00');
     for (let i = 0; i < 7; i++) {
-      const d = new Date(todayDate.getTime() - i * 86400000);
+      const d = new Date(refDate.getTime() - i * 86400000);
       days.push(d.toISOString().slice(0, 10));
     }
     return days;
@@ -308,7 +308,7 @@
   async function loadSpend7d() {
     const days = get7DayWindow();
     const from = days[days.length - 1];
-    const url = `metrics?metric_type=eq.spend&date=gte.${from}&date=lte.${TODAY}` +
+    const url = `metrics?metric_type=eq.spend&date=gte.${from}&date=lte.${VIEW_DATE}` +
                 `&select=id,date,value,note,source,created_at&order=created_at.asc`;
     return await sbGet(url);
   }
@@ -358,12 +358,13 @@
   function renderTxnList(todayRows) {
     const list = document.getElementById('txnList');
     const countEl = document.getElementById('txnCount');
+    const dayWord = IS_PAST ? 'on this day' : 'today';
     if (todayRows.length === 0) {
-      countEl.textContent = '0 today';
-      list.innerHTML = '<div class="empty">no transactions today</div>';
+      countEl.textContent = `0 ${dayWord}`;
+      list.innerHTML = `<div class="empty">no transactions ${dayWord}</div>`;
       return;
     }
-    countEl.textContent = `${todayRows.length} today`;
+    countEl.textContent = `${todayRows.length} ${dayWord}`;
     list.innerHTML = renderTxnRows(todayRows);
   }
 
@@ -392,17 +393,17 @@
     const list = document.getElementById('weekList');
     list.innerHTML = days.map(d => {
       const bucket = totalsByDate.get(d);
-      const isToday = d === TODAY;
+      const isViewDay = d === VIEW_DATE;
       const over = bucket.total > goal;
       const isZero = bucket.total === 0;
       const hasTxns = bucket.count > 0;
       const barW = maxTotal > 0 ? Math.round((bucket.total / maxTotal) * 100) : 0;
       return `
         <div class="day-block ${hasTxns ? '' : 'no-txns'}" data-date="${d}">
-          <div class="day-row ${isToday ? 'today' : ''} ${hasTxns ? '' : 'no-txns'}">
+          <div class="day-row ${isViewDay ? 'today' : ''} ${hasTxns ? '' : 'no-txns'}">
             <span class="day-chevron">▸</span>
             <div class="day-body">
-              <div class="day-label">${fmtDayLabel(d, TODAY)}</div>
+              <div class="day-label">${fmtDayLabel(d, VIEW_DATE)}</div>
               <div class="day-sub">${fmtShortDate(d)} · ${bucket.count} txn${bucket.count === 1 ? '' : 's'}</div>
             </div>
             <div class="day-bar-wrap">
@@ -427,7 +428,7 @@
   async function loadAll() {
     try {
       const [goal, allRows] = await Promise.all([loadGoal(), loadSpend7d()]);
-      const todayRows = allRows.filter(r => r.date === TODAY);
+      const todayRows = allRows.filter(r => r.date === VIEW_DATE);
       renderTodayCard(todayRows, goal);
       renderTxnList(todayRows);
       renderWeek(allRows, goal);
