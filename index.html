@@ -176,6 +176,7 @@
     background: var(--surface); border: 1px solid var(--border-strong);
     border-radius: var(--radius); overflow: hidden;
   }
+  .list.hidden { display: none; }
   .list-item {
     display: flex; align-items: flex-start; gap: 12px;
     padding: 14px 16px; border-bottom: 1px solid var(--border);
@@ -672,7 +673,7 @@
 </section>
 
 <section>
-  <div class="section-head">
+  <div class="section-head collapsible" id="tasksHead">
     <h2>tasks</h2>
     <span class="count" id="tasksCount"></span>
   </div>
@@ -682,7 +683,7 @@
 </section>
 
 <section>
-  <div class="section-head">
+  <div class="section-head collapsible" id="shoppingHead">
     <h2>shopping</h2>
     <span class="count" id="shoppingCount"></span>
   </div>
@@ -797,6 +798,8 @@
   let CAPTURES_OPEN = false;
   let FOOD_OPEN = false;
   let SPEND_OPEN = false;
+  let TASKS_OPEN = true;
+  let SHOPPING_OPEN = true;
 
   const DELETABLES = {
     tasks: {
@@ -1325,8 +1328,11 @@
     const items = sortItems(TASKS, true);
     const open = TASKS.filter(t => !t.done).length;
     const countEl = document.getElementById('tasksCount');
-    if (IS_PAST) countEl.textContent = `${TASKS.length} completed`;
-    else countEl.textContent = open === 0 ? 'all done' : `${open} open`;
+    const baseText = IS_PAST
+      ? `${TASKS.length} completed`
+      : (open === 0 ? 'all done' : `${open} open`);
+    countEl.innerHTML = `${baseText} <span class="chevron ${TASKS_OPEN ? 'open' : ''}">▾</span>`;
+    list.classList.toggle('hidden', !TASKS_OPEN);
 
     if (items.length === 0) {
       list.innerHTML = IS_PAST
@@ -1360,8 +1366,11 @@
     const items = sortItems(SHOPPING, false);
     const open = SHOPPING.filter(s => !s.done).length;
     const countEl = document.getElementById('shoppingCount');
-    if (IS_PAST) countEl.textContent = `${SHOPPING.length} purchased`;
-    else countEl.textContent = open === 0 ? 'empty' : `${open} items`;
+    const baseText = IS_PAST
+      ? `${SHOPPING.length} purchased`
+      : (open === 0 ? 'empty' : `${open} items`);
+    countEl.innerHTML = `${baseText} <span class="chevron ${SHOPPING_OPEN ? 'open' : ''}">▾</span>`;
+    list.classList.toggle('hidden', !SHOPPING_OPEN);
 
     if (items.length === 0) {
       list.innerHTML = IS_PAST
@@ -1544,6 +1553,14 @@
     renderSpendMetric();
   }
 
+  document.getElementById('tasksHead').addEventListener('click', () => {
+    TASKS_OPEN = !TASKS_OPEN;
+    renderTasks();
+  });
+  document.getElementById('shoppingHead').addEventListener('click', () => {
+    SHOPPING_OPEN = !SHOPPING_OPEN;
+    renderShopping();
+  });
   document.getElementById('capturesHead').addEventListener('click', () => {
     CAPTURES_OPEN = !CAPTURES_OPEN;
     renderRecentCaptures();
