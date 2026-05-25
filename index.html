@@ -132,7 +132,7 @@
     display: flex; flex-direction: column; gap: 6px;
     min-height: 64px; -webkit-user-select: none; user-select: none;
   }
-  .tracker.full { grid-column: 1 / -1; }
+  .tracker.span-2 { grid-column: 1 / -1; }
   .tracker-label {
     font-size: 10px; font-weight: 600; letter-spacing: 1.5px;
     text-transform: uppercase; color: var(--text-faint);
@@ -166,27 +166,11 @@
   }
   .tracker-toggle.on::after { content: "✓"; font-weight: 700; font-size: 16px; }
 
-  .tracker-slider {
-    -webkit-appearance: none; appearance: none;
-    width: 100%; height: 4px; background: var(--border-strong);
-    border-radius: 2px; outline: none; margin: 4px 0 2px;
-  }
-  .tracker-slider::-webkit-slider-thumb {
-    -webkit-appearance: none; appearance: none;
-    width: 18px; height: 18px; border-radius: 50%;
-    background: var(--accent); cursor: pointer; border: none;
-  }
-  .tracker-slider::-moz-range-thumb {
-    width: 18px; height: 18px; border-radius: 50%;
-    background: var(--accent); cursor: pointer; border: none;
-  }
-  .tracker-pips {
-    display: flex; justify-content: space-between;
-    font-size: 9px; color: var(--text-faint); letter-spacing: 0.5px;
-  }
   .tracker.past .tracker-btn,
-  .tracker.past .tracker-toggle,
-  .tracker.past .tracker-slider { pointer-events: none; opacity: 0.65; }
+  .tracker.past .tracker-toggle { pointer-events: none; opacity: 0.65; }
+
+  #apartmentScore { font-size: 12px; color: var(--text-faint); font-variant-numeric: tabular-nums; }
+  #apartmentScore.good { color: var(--accent); }
 
   .list {
     background: var(--surface); border: 1px solid var(--border-strong);
@@ -674,9 +658,17 @@
 
 <section>
   <div class="section-head">
-    <h2>trackers</h2>
+    <h2>today</h2>
   </div>
-  <div class="trackers" id="trackersWidget"></div>
+  <div class="trackers" id="trackersToday"></div>
+</section>
+
+<section>
+  <div class="section-head">
+    <h2>apartment</h2>
+    <span class="count" id="apartmentScore"></span>
+  </div>
+  <div class="trackers trackers-apartment" id="trackersApartment"></div>
 </section>
 
 <section>
@@ -749,7 +741,7 @@
 <script>
   // Init shared nav
   window.addEventListener('DOMContentLoaded', () => {
-    MotrackerNav.init({ active: 'today', title: 'motracker' });
+    MotrackerNav.init({ active: 'today', sub: 'today', title: 'motracker' });
   });
 
   const SUPABASE_URL = "https://fwqhomgawlgicqiqqqhw.supabase.co";
@@ -1084,106 +1076,114 @@
   }
 
   // ---- trackers ----
-  // metric_type=habit uses unit=workout, value 0|1 (toggle)
-  // counters use their own metric_type, value=N
-  // cleanness uses metric_type=cleanness, value 1..5 (slider)
-  const TRACKER_CONFIG = [
-    { key: 'workout',     metric_type: 'habit',       unit: 'workout', kind: 'toggle',  label: 'workout', full: false },
-    { key: 'coffee',      metric_type: 'coffee',      unit: 'cups',    kind: 'counter', label: 'coffee',  step: 1,   softCap: 3,             unitLabel: '/3 cups' },
-    { key: 'water',       metric_type: 'water',       unit: 'ml',      kind: 'counter', label: 'water',   step: 500, target: 2000,           unitLabel: '/2000ml' },
-    { key: 'cig_factory', metric_type: 'cig_factory', unit: 'cigs',    kind: 'counter', label: 'cig (factory)', step: 1, target: 0,         unitLabel: 'cigs' },
-    { key: 'cig_rolled',  metric_type: 'cig_rolled',  unit: 'cigs',    kind: 'counter', label: 'cig (rolled)',  step: 1, target: 0,         unitLabel: 'cigs' },
-    { key: 'cleanness',   metric_type: 'cleanness',   unit: 'score',   kind: 'slider',  label: 'apartment',  min: 1, max: 5, full: true },
+  // Storage model (all in `metrics` table, source='tracker'):
+  //   metric_type='habit',       unit='workout'  value 0|1  toggle
+  //   metric_type='coffee',      unit='cups'     value N    counter, soft cap 3
+  //   metric_type='water',       unit='ml'       value N    counter, +500ml steps, target 2000
+  //   metric_type='cig_factory', unit='cigs'     value N    counter, target 0
+  //   metric_type='cig_rolled',  unit='cigs'     value N    counter, target 0
+  //   metric_type='apartment',   unit in (dishes,clothes,bathroom,living)  value 0|1  toggle
+  // Apartment score (X/4 clean) is derived at read time — never stored.
+  const TODAY_TRACKERS = [
+    { key: 'workout',     metric_type: 'habit',       unit: 'workout', kind: 'toggle',  label: 'workout',       span2: true },
+    { key: 'coffee',      metric_type: 'coffee',      unit: 'cups',    kind: 'counter', label: 'coffee',  step: 1,   softCap: 3,    unitLabel: '/3 cups' },
+    { key: 'water',       metric_type: 'water',       unit: 'ml',      kind: 'counter', label: 'water',   step: 500, target: 2000,  unitLabel: '/2000ml' },
+    { key: 'cig_factory', metric_type: 'cig_factory', unit: 'cigs',    kind: 'counter', label: 'cig (factory)', step: 1, target: 0, unitLabel: 'cigs' },
+    { key: 'cig_rolled',  metric_type: 'cig_rolled',  unit: 'cigs',    kind: 'counter', label: 'cig (rolled)',  step: 1, target: 0, unitLabel: 'cigs' },
   ];
+  const APARTMENT_TRACKERS = [
+    { key: 'apt_dishes',   metric_type: 'apartment', unit: 'dishes',   kind: 'toggle', label: 'dishes' },
+    { key: 'apt_clothes',  metric_type: 'apartment', unit: 'clothes',  kind: 'toggle', label: 'clothes' },
+    { key: 'apt_bathroom', metric_type: 'apartment', unit: 'bathroom', kind: 'toggle', label: 'bathroom' },
+    { key: 'apt_living',   metric_type: 'apartment', unit: 'living',   kind: 'toggle', label: 'living' },
+  ];
+  const ALL_TRACKERS = [...TODAY_TRACKERS, ...APARTMENT_TRACKERS];
   // TRACKERS: key -> { id, value }   (id null = no row yet for VIEW_DATE)
   let TRACKERS = {};
 
   async function loadTrackers() {
-    const types = TRACKER_CONFIG.map(c => c.metric_type);
+    const types = [...new Set(ALL_TRACKERS.map(c => c.metric_type))];
     const url = `metrics?date=eq.${VIEW_DATE}&metric_type=in.(${types.join(',')})&select=id,metric_type,unit,value&order=created_at.asc`;
     const rows = await sbGet(url);
     TRACKERS = {};
-    for (const cfg of TRACKER_CONFIG) {
-      // match by metric_type + unit (workout uses metric_type=habit, unit=workout)
-      const row = rows.find(r => r.metric_type === cfg.metric_type && (cfg.metric_type !== 'habit' || r.unit === cfg.unit));
-      TRACKERS[cfg.key] = row ? { id: row.id, value: +row.value } : { id: null, value: cfg.kind === 'slider' ? null : 0 };
+    for (const cfg of ALL_TRACKERS) {
+      // match by metric_type + unit (one row per metric_type+unit per day)
+      const row = rows.find(r => r.metric_type === cfg.metric_type && r.unit === cfg.unit);
+      TRACKERS[cfg.key] = row ? { id: row.id, value: +row.value } : { id: null, value: 0 };
     }
   }
 
+  function renderTrackerTile(cfg, pastCls) {
+    const t = TRACKERS[cfg.key] || { value: 0 };
+    const v = t.value;
+    const span = cfg.span2 ? ' span-2' : '';
+    if (cfg.kind === 'toggle') {
+      const on = v >= 1;
+      return `
+        <div class="tracker${pastCls}${span}" data-tk="${cfg.key}">
+          <div class="tracker-label">${cfg.label}</div>
+          <div class="tracker-row">
+            <div class="tracker-val ${on ? 'good' : ''}">${on ? 'done' : '—'}</div>
+            <button class="tracker-toggle ${on ? 'on' : ''}" data-action="toggle"></button>
+          </div>
+        </div>`;
+    }
+    if (cfg.kind === 'counter') {
+      const val = v || 0;
+      let valCls = '';
+      if (cfg.softCap && val > cfg.softCap) valCls = 'over';
+      if (cfg.target === 0 && val > 0)      valCls = 'bad';
+      if (cfg.target && cfg.target > 0 && val >= cfg.target) valCls = 'good';
+      const display = cfg.unit === 'ml' ? val.toLocaleString('en-US') : val;
+      return `
+        <div class="tracker${pastCls}${span}" data-tk="${cfg.key}">
+          <div class="tracker-label">${cfg.label}</div>
+          <div class="tracker-row">
+            <div class="tracker-val ${valCls}">${display}<span class="unit">${cfg.unitLabel}</span></div>
+            <div style="display:flex; gap:6px;">
+              <button class="tracker-btn minus" data-action="dec">−</button>
+              <button class="tracker-btn" data-action="inc">+</button>
+            </div>
+          </div>
+        </div>`;
+    }
+    return '';
+  }
+
   function renderTrackers() {
-    const el = document.getElementById('trackersWidget');
-    if (!el) return;
     const pastCls = IS_PAST ? ' past' : '';
-    const parts = TRACKER_CONFIG.map(cfg => {
-      const t = TRACKERS[cfg.key] || { value: 0 };
-      const v = t.value;
-      if (cfg.kind === 'toggle') {
-        const on = v >= 1;
-        return `
-          <div class="tracker${pastCls}" data-tk="${cfg.key}">
-            <div class="tracker-label">${cfg.label}</div>
-            <div class="tracker-row">
-              <div class="tracker-val ${on ? 'good' : ''}">${on ? 'done' : '—'}</div>
-              <button class="tracker-toggle ${on ? 'on' : ''}" data-action="toggle"></button>
-            </div>
-          </div>`;
-      }
-      if (cfg.kind === 'counter') {
-        const val = v || 0;
-        let valCls = '';
-        if (cfg.softCap && val > cfg.softCap) valCls = 'over';
-        if (cfg.target === 0 && val > 0)      valCls = 'bad';
-        if (cfg.target && cfg.target > 0 && val >= cfg.target) valCls = 'good';
-        const display = cfg.unit === 'ml' ? val.toLocaleString('en-US') : val;
-        return `
-          <div class="tracker${pastCls}" data-tk="${cfg.key}">
-            <div class="tracker-label">${cfg.label}</div>
-            <div class="tracker-row">
-              <div class="tracker-val ${valCls}">${display}<span class="unit">${cfg.unitLabel}</span></div>
-              <div style="display:flex; gap:6px;">
-                <button class="tracker-btn minus" data-action="dec">−</button>
-                <button class="tracker-btn" data-action="inc">+</button>
-              </div>
-            </div>
-          </div>`;
-      }
-      if (cfg.kind === 'slider') {
-        const val = v == null ? cfg.min : v;
-        const hasVal = v != null;
-        return `
-          <div class="tracker${pastCls} ${cfg.full ? 'full' : ''}" data-tk="${cfg.key}">
-            <div class="tracker-label">${cfg.label}</div>
-            <div class="tracker-row">
-              <div class="tracker-val">${hasVal ? val : '—'}<span class="unit">/5</span></div>
-            </div>
-            <input type="range" class="tracker-slider" data-action="slide"
-                   min="${cfg.min}" max="${cfg.max}" step="1" value="${val}" />
-            <div class="tracker-pips">
-              <span>messy</span><span></span><span></span><span></span><span>spotless</span>
-            </div>
-          </div>`;
-      }
-      return '';
-    });
-    el.innerHTML = parts.join('');
+    const todayEl = document.getElementById('trackersToday');
+    if (todayEl) {
+      todayEl.innerHTML = TODAY_TRACKERS.map(c => renderTrackerTile(c, pastCls)).join('');
+    }
+    const aptEl = document.getElementById('trackersApartment');
+    if (aptEl) {
+      aptEl.innerHTML = APARTMENT_TRACKERS.map(c => renderTrackerTile(c, pastCls)).join('');
+    }
+    // derived apartment score
+    const scoreEl = document.getElementById('apartmentScore');
+    if (scoreEl) {
+      const done = APARTMENT_TRACKERS.filter(c => (TRACKERS[c.key]?.value || 0) >= 1).length;
+      scoreEl.textContent = `${done}/4 clean`;
+      scoreEl.classList.toggle('good', done === 4);
+    }
   }
 
   async function writeTracker(cfgKey, newValue) {
     if (IS_PAST) return;  // only mutate today
-    const cfg = TRACKER_CONFIG.find(c => c.key === cfgKey);
+    const cfg = ALL_TRACKERS.find(c => c.key === cfgKey);
     if (!cfg) return;
     const cur = TRACKERS[cfgKey] || { id: null, value: 0 };
     // optimistic update
     const prevValue = cur.value;
+    const prevId = cur.id;
     TRACKERS[cfgKey] = { id: cur.id, value: newValue };
     renderTrackers();
     try {
       if (cur.id) {
-        // update existing row
         const rows = await sbPatch(`metrics?id=eq.${cur.id}`, { value: newValue });
         if (rows && rows[0]) TRACKERS[cfgKey].id = rows[0].id;
       } else {
-        // insert new row for today
         const payload = {
           date: VIEW_DATE,
           metric_type: cfg.metric_type,
@@ -1196,38 +1196,37 @@
       }
     } catch (e) {
       console.error('tracker write failed', e);
-      TRACKERS[cfgKey] = { id: cur.id, value: prevValue };
+      TRACKERS[cfgKey] = { id: prevId, value: prevValue };
       renderTrackers();
       showToast('save failed', { error: true });
     }
   }
 
-  document.getElementById('trackersWidget').addEventListener('click', (ev) => {
-    const btn = ev.target.closest('[data-action]');
-    if (!btn) return;
-    const wrap = btn.closest('[data-tk]');
-    if (!wrap) return;
-    const key = wrap.dataset.tk;
-    const cfg = TRACKER_CONFIG.find(c => c.key === key);
-    if (!cfg || IS_PAST) return;
-    const cur = TRACKERS[key]?.value || 0;
-    const action = btn.dataset.action;
-    if (action === 'toggle') {
-      writeTracker(key, cur >= 1 ? 0 : 1);
-    } else if (action === 'inc') {
-      writeTracker(key, cur + (cfg.step || 1));
-    } else if (action === 'dec') {
-      const next = cur - (cfg.step || 1);
-      writeTracker(key, next < 0 ? 0 : next);
-    }
-  });
-  document.getElementById('trackersWidget').addEventListener('change', (ev) => {
-    const inp = ev.target.closest('input[data-action="slide"]');
-    if (!inp) return;
-    const wrap = inp.closest('[data-tk]');
-    if (!wrap) return;
-    writeTracker(wrap.dataset.tk, +inp.value);
-  });
+  function wireTrackerCard(elId) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    el.addEventListener('click', (ev) => {
+      const btn = ev.target.closest('[data-action]');
+      if (!btn) return;
+      const wrap = btn.closest('[data-tk]');
+      if (!wrap) return;
+      const key = wrap.dataset.tk;
+      const cfg = ALL_TRACKERS.find(c => c.key === key);
+      if (!cfg || IS_PAST) return;
+      const cur = TRACKERS[key]?.value || 0;
+      const action = btn.dataset.action;
+      if (action === 'toggle') {
+        writeTracker(key, cur >= 1 ? 0 : 1);
+      } else if (action === 'inc') {
+        writeTracker(key, cur + (cfg.step || 1));
+      } else if (action === 'dec') {
+        const next = cur - (cfg.step || 1);
+        writeTracker(key, next < 0 ? 0 : next);
+      }
+    });
+  }
+  wireTrackerCard('trackersToday');
+  wireTrackerCard('trackersApartment');
 
   async function loadAll() {
     try {
@@ -1243,7 +1242,8 @@
       document.getElementById("spendMetric").innerHTML = "";
       document.getElementById("budgetWidget").innerHTML = "";
       document.getElementById("capturesList").innerHTML = "";
-      document.getElementById("trackersWidget").innerHTML = "";
+      document.getElementById("trackersToday").innerHTML = "";
+      document.getElementById("trackersApartment").innerHTML = "";
     }
   }
 

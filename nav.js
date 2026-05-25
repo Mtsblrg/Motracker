@@ -91,6 +91,17 @@
     try { sessionStorage.setItem(FINANCE_SUB_KEY, sub); } catch {}
   }
 
+  // ---------- today sub-tab session memory ----------
+  const TODAY_SUB_KEY = 'mt_today_sub';
+  function getTodaySub() {
+    try {
+      return sessionStorage.getItem(TODAY_SUB_KEY) || 'today';
+    } catch { return 'today'; }
+  }
+  function setTodaySub(sub) {
+    try { sessionStorage.setItem(TODAY_SUB_KEY, sub); } catch {}
+  }
+
   // ---------- markup ----------
   const PAGES = {
     today: { path: './', label: 'today', icon: '☀' },
@@ -106,6 +117,11 @@
     dash:   { path: './dashboard.html', label: 'dashboard' },
     spend:  { path: './spend.html',     label: 'spend' },
     budget: { path: './budget.html',    label: 'budget' },
+  };
+
+  const TODAY_SUBS = {
+    today:    { path: './',              label: 'today' },
+    trackers: { path: './trackers.html', label: 'trackers' },
   };
 
   function buildHeader(title) {
@@ -125,8 +141,8 @@
       </header>`;
   }
 
-  function buildSubtabs(activeSub) {
-    const items = Object.entries(FINANCE_SUBS).map(([key, info]) => `
+  function buildSubtabs(subs, activeSub) {
+    const items = Object.entries(subs).map(([key, info]) => `
       <a class="mt-subtab ${key === activeSub ? 'active' : ''}"
          href="${info.path}${buildDateQuery(VIEW_DATE)}"
          data-sub="${key}">${info.label}</a>`).join('');
@@ -135,8 +151,9 @@
 
   function buildTabbar(active) {
     const financePath = FINANCE_SUBS[getFinanceSub()].path;
+    const todayPath = TODAY_SUBS[getTodaySub()].path;
     const tabs = [
-      { key: 'today',    path: PAGES.today.path,    label: 'today',    icon: '☀' },
+      { key: 'today',    path: todayPath,           label: 'today',    icon: '☀' },
       { key: 'finance',  path: financePath,         label: 'finance',  icon: '⊙' },
       { key: 'captures', path: PAGES.captures.path, label: 'captures', icon: '⊞' },
     ];
@@ -233,15 +250,22 @@
       const active = opts.active || 'today';
       const title = opts.title || 'motracker';
 
-      // Remember finance sub-tab for cross-page session memory
+      // Remember finance/today sub-tab for cross-page session memory
       if (active === 'finance' && opts.sub) {
         setFinanceSub(opts.sub);
       }
-      const activeSub = (active === 'finance') ? (opts.sub || getFinanceSub()) : null;
+      if (active === 'today' && opts.sub) {
+        setTodaySub(opts.sub);
+      }
+      const activeSub = opts.sub
+        || (active === 'finance' ? getFinanceSub() : null)
+        || (active === 'today'   ? getTodaySub()   : null);
 
       // Build markup
       const headerHTML = buildHeader(title);
-      const subtabsHTML = (active === 'finance') ? buildSubtabs(activeSub) : '';
+      let subtabsHTML = '';
+      if (active === 'finance') subtabsHTML = buildSubtabs(FINANCE_SUBS, activeSub);
+      else if (active === 'today') subtabsHTML = buildSubtabs(TODAY_SUBS, activeSub);
       const tabbarHTML = buildTabbar(active);
       const calHTML = buildCalendar();
 
