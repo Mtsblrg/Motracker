@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <meta name="theme-color" content="#0d0f12" />
 <title>Motracker — dashboard</title>
+<link rel="stylesheet" href="./nav.css" />
+<script src="./nav.js" defer></script>
 <style>
   :root {
     --bg: #0d0f12;
@@ -277,14 +279,6 @@
 </head>
 <body>
 
-<header>
-  <h1>motracker</h1>
-  <div class="header-right">
-    <a class="nav" href="./">today →</a>
-    <a class="nav" href="./budget.html">budget →</a>
-  </div>
-</header>
-
 <div class="tabs" id="tabs">
   <button class="tab active" data-tab="D">D</button>
   <button class="tab" data-tab="W">W</button>
@@ -298,6 +292,11 @@
 </div>
 
 <script>
+  // Init shared nav
+  window.addEventListener('DOMContentLoaded', () => {
+    MotrackerNav.init({ active: 'finance', sub: 'dash', title: 'dashboard' });
+  });
+
   const SUPABASE_URL = "https://fwqhomgawlgicqiqqqhw.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ3cWhvbWdhd2xnaWNxaXFxcWh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyMTE1NDYsImV4cCI6MjA5Mjc4NzU0Nn0.LF82rWM0rX5FKY0Qo5Vsym_VWgV2reL_U8LkHbfWVHI";
   const REST = `${SUPABASE_URL}/rest/v1`;
@@ -343,7 +342,14 @@
     }[c]));
   }
 
-  const TODAY = todayISO();
+  const ACTUAL_TODAY = todayISO();
+  const urlDate = new URLSearchParams(window.location.search).get('date');
+  const VIEW_DATE = (urlDate && /^\d{4}-\d{2}-\d{2}$/.test(urlDate) && urlDate <= ACTUAL_TODAY)
+    ? urlDate : ACTUAL_TODAY;
+  const IS_PAST = VIEW_DATE !== ACTUAL_TODAY;
+  // From here on, TODAY means the user-selected "as-of" date.
+  // The D tab shows data for VIEW_DATE; trends end at VIEW_DATE.
+  const TODAY = VIEW_DATE;
 
   async function sbGet(path) {
     const res = await fetch(`${REST}/${path}`, { headers: HEADERS });
