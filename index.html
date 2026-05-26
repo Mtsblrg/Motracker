@@ -169,8 +169,50 @@
   .tracker.past .tracker-btn,
   .tracker.past .tracker-toggle { pointer-events: none; opacity: 0.65; }
 
-  #apartmentScore { font-size: 12px; color: var(--text-faint); font-variant-numeric: tabular-nums; }
-  #apartmentScore.good { color: var(--accent); }
+  /* chores: decay bars with tap-to-reset */
+  .chores {
+    background: var(--surface); border: 1px solid var(--border-strong);
+    border-radius: var(--radius); padding: 12px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .chore-row {
+    display: flex; align-items: center; gap: 10px;
+    -webkit-user-select: none; user-select: none;
+  }
+  .chore-label {
+    flex: 0 0 70px;
+    font-size: 12px; color: var(--text); font-weight: 500;
+    letter-spacing: 0.3px;
+  }
+  .chore-bar-wrap {
+    flex: 1;
+    height: 10px; background: var(--border);
+    border-radius: 5px; overflow: hidden;
+    position: relative;
+    cursor: pointer;
+  }
+  .chore-bar-fill {
+    height: 100%; border-radius: 5px;
+    transition: width 0.4s ease-out, background 0.3s;
+  }
+  .chore-bar-fill.fresh   { background: var(--accent); }
+  .chore-bar-fill.warning { background: var(--spend); }
+  .chore-bar-fill.stale   { background: var(--danger); }
+  .chore-sub {
+    flex: 0 0 60px;
+    font-size: 11px; color: var(--text-faint);
+    text-align: right; font-variant-numeric: tabular-nums;
+  }
+  .chore-reset {
+    background: var(--surface-hover); border: 1px solid var(--border-strong);
+    color: var(--text); border-radius: 6px;
+    width: 30px; height: 26px; font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; padding: 0; flex-shrink: 0;
+  }
+  .chore-reset:active { background: var(--border-strong); }
+  .chores.past .chore-bar-wrap,
+  .chores.past .chore-reset { pointer-events: none; opacity: 0.65; }
 
   .list {
     background: var(--surface); border: 1px solid var(--border-strong);
@@ -666,10 +708,9 @@
 
 <section>
   <div class="section-head">
-    <h2>apartment</h2>
-    <span class="count" id="apartmentScore"></span>
+    <h2>chores</h2>
   </div>
-  <div class="trackers trackers-apartment" id="trackersApartment"></div>
+  <div class="chores" id="chores"></div>
 </section>
 
 <section>
@@ -1088,8 +1129,10 @@
   //   metric_type='cig_factory',    unit='cigs'   value N    counter, target 0  — factory-rolled cigarettes
   //   metric_type='cig_rolled',     unit='cigs'   value N    counter, target 0  — hand-rolled cigarettes
   //     ^ cig_factory and cig_rolled are also SEPARATE — different products, tracked separately by intent.
-  //   metric_type='apartment',      unit in (dishes,clothes,bathroom,living)  value 0|1  toggle
-  // Apartment score (X/4 clean) is derived at read time — never stored.
+  // CHORES (decay model, separate from daily trackers above):
+  //   metric_type='chore_dishes'|'chore_living'|'chore_bathroom'|'chore_kitchen', unit='reset', value=1
+  //   Each reset = INSERT new row. Bar % derived at read: 100 - (hours_since_last / cadence_hours * 100), clamped 0-100.
+  //   Cadences: dishes 3d, living 3d, bathroom 7d, kitchen 7d. Append mode — query MAX(created_at) per type.
   const TODAY_TRACKERS = [
     { key: 'workout_done',   metric_type: 'workout_done',   unit: 'done', kind: 'toggle',  label: 'workout' },
     { key: 'workout_active', metric_type: 'workout_active', unit: 'done', kind: 'toggle',  label: 'active day' },
@@ -1098,13 +1141,15 @@
     { key: 'cig_factory',    metric_type: 'cig_factory',    unit: 'cigs', kind: 'counter', label: 'cig (factory)', step: 1,   target: 0,     unitLabel: 'cigs' },
     { key: 'cig_rolled',     metric_type: 'cig_rolled',     unit: 'cigs', kind: 'counter', label: 'cig (rolled)',  step: 1,   target: 0,     unitLabel: 'cigs' },
   ];
-  const APARTMENT_TRACKERS = [
-    { key: 'apt_dishes',   metric_type: 'apartment', unit: 'dishes',   kind: 'toggle', label: 'dishes' },
-    { key: 'apt_clothes',  metric_type: 'apartment', unit: 'clothes',  kind: 'toggle', label: 'clothes' },
-    { key: 'apt_bathroom', metric_type: 'apartment', unit: 'bathroom', kind: 'toggle', label: 'bathroom' },
-    { key: 'apt_living',   metric_type: 'apartment', unit: 'living',   kind: 'toggle', label: 'living' },
+  const CHORES = [
+    { key: 'dishes',   metric_type: 'chore_dishes',   label: 'dishes',   cadence: 3 },
+    { key: 'living',   metric_type: 'chore_living',   label: 'living',   cadence: 3 },
+    { key: 'bathroom', metric_type: 'chore_bathroom', label: 'bathroom', cadence: 7 },
+    { key: 'kitchen',  metric_type: 'chore_kitchen',  label: 'kitchen',  cadence: 7 },
   ];
-  const ALL_TRACKERS = [...TODAY_TRACKERS, ...APARTMENT_TRACKERS];
+  const ALL_TRACKERS = [...TODAY_TRACKERS];
+  // CHORES_STATE: key -> { lastResetAt: ISO string | null }
+  let CHORES_STATE = {};
   // TRACKERS: key -> { id, value }   (id null = no row yet for VIEW_DATE)
   let TRACKERS = {};
 
@@ -1162,17 +1207,6 @@
     const todayEl = document.getElementById('trackersToday');
     if (todayEl) {
       todayEl.innerHTML = TODAY_TRACKERS.map(c => renderTrackerTile(c, pastCls)).join('');
-    }
-    const aptEl = document.getElementById('trackersApartment');
-    if (aptEl) {
-      aptEl.innerHTML = APARTMENT_TRACKERS.map(c => renderTrackerTile(c, pastCls)).join('');
-    }
-    // derived apartment score
-    const scoreEl = document.getElementById('apartmentScore');
-    if (scoreEl) {
-      const done = APARTMENT_TRACKERS.filter(c => (TRACKERS[c.key]?.value || 0) >= 1).length;
-      scoreEl.textContent = `${done}/4 clean`;
-      scoreEl.classList.toggle('good', done === 4);
     }
   }
 
@@ -1233,11 +1267,99 @@
     });
   }
   wireTrackerCard('trackersToday');
-  wireTrackerCard('trackersApartment');
+
+  // ---- chores (decay model) ----
+  async function loadChores() {
+    const types = CHORES.map(c => c.metric_type);
+    // grab MAX(created_at) per metric_type. PostgREST doesn't support aggregates here,
+    // so fetch the most recent row per type via ordered limit per type. Simpler: fetch
+    // all chore_* rows in last 30 days and pick the latest per type client-side.
+    const since = new Date(Date.now() - 30 * 86400000).toISOString();
+    const url = `metrics?metric_type=in.(${types.join(',')})&created_at=gte.${since}&select=metric_type,created_at&order=created_at.desc`;
+    const rows = await sbGet(url);
+    CHORES_STATE = {};
+    for (const cfg of CHORES) {
+      const latest = rows.find(r => r.metric_type === cfg.metric_type);
+      CHORES_STATE[cfg.key] = { lastResetAt: latest ? latest.created_at : null };
+    }
+  }
+
+  function chorePct(cfg) {
+    const state = CHORES_STATE[cfg.key];
+    if (!state || !state.lastResetAt) return 0;  // never cleaned = stale
+    const elapsed = Date.now() - new Date(state.lastResetAt).getTime();
+    const cadenceMs = cfg.cadence * 86400000;
+    return Math.max(0, Math.min(100, 100 - (elapsed / cadenceMs) * 100));
+  }
+
+  function choreSubLabel(cfg) {
+    const state = CHORES_STATE[cfg.key];
+    if (!state || !state.lastResetAt) return 'never';
+    const hours = (Date.now() - new Date(state.lastResetAt).getTime()) / 3600000;
+    if (hours < 1)  return 'just now';
+    if (hours < 24) return `${Math.floor(hours)}h ago`;
+    const days = hours / 24;
+    if (days < 1.5) return '1d ago';
+    return `${Math.floor(days)}d ago`;
+  }
+
+  function renderChores() {
+    const el = document.getElementById('chores');
+    if (!el) return;
+    el.classList.toggle('past', IS_PAST);
+    el.innerHTML = CHORES.map(cfg => {
+      const pct = chorePct(cfg);
+      let cls = 'fresh';
+      if (pct <= 33) cls = 'stale';
+      else if (pct <= 66) cls = 'warning';
+      return `
+        <div class="chore-row" data-chore="${cfg.key}">
+          <div class="chore-label">${cfg.label}</div>
+          <div class="chore-bar-wrap" data-action="reset">
+            <div class="chore-bar-fill ${cls}" style="width:${pct}%"></div>
+          </div>
+          <div class="chore-sub">${choreSubLabel(cfg)}</div>
+          <button class="chore-reset" data-action="reset" title="mark clean">✓</button>
+        </div>`;
+    }).join('');
+  }
+
+  async function resetChore(key) {
+    if (IS_PAST) return;
+    const cfg = CHORES.find(c => c.key === key);
+    if (!cfg) return;
+    const prev = CHORES_STATE[key]?.lastResetAt || null;
+    const nowIso = new Date().toISOString();
+    CHORES_STATE[key] = { lastResetAt: nowIso };
+    renderChores();
+    try {
+      await sbPost('metrics', {
+        date: VIEW_DATE,
+        metric_type: cfg.metric_type,
+        unit: 'reset',
+        value: 1,
+        source: 'tracker',
+      });
+      showToast(`✓ ${cfg.label} cleaned`);
+    } catch (e) {
+      console.error('chore reset failed', e);
+      CHORES_STATE[key] = { lastResetAt: prev };
+      renderChores();
+      showToast('save failed', { error: true });
+    }
+  }
+
+  document.getElementById('chores').addEventListener('click', (ev) => {
+    const trigger = ev.target.closest('[data-action="reset"]');
+    if (!trigger) return;
+    const row = trigger.closest('[data-chore]');
+    if (!row) return;
+    resetChore(row.dataset.chore);
+  });
 
   async function loadAll() {
     try {
-      await Promise.all([loadGoals(), loadTasks(), loadShopping(), loadMetrics(), loadTrackers(), loadRecentCaptures()]);
+      await Promise.all([loadGoals(), loadTasks(), loadShopping(), loadMetrics(), loadTrackers(), loadChores(), loadRecentCaptures()]);
       await loadBudget();  // depends on GOALS
       renderAll();
     } catch (e) {
@@ -1250,7 +1372,7 @@
       document.getElementById("budgetWidget").innerHTML = "";
       document.getElementById("capturesList").innerHTML = "";
       document.getElementById("trackersToday").innerHTML = "";
-      document.getElementById("trackersApartment").innerHTML = "";
+      document.getElementById("chores").innerHTML = "";
     }
   }
 
@@ -1549,6 +1671,7 @@
   function renderAll() {
     renderHeader();
     renderTrackers();
+    renderChores();
     renderTasks();
     renderShopping();
     renderCaloriesMetric();
