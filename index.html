@@ -1273,8 +1273,9 @@
     const types = CHORES.map(c => c.metric_type);
     // grab MAX(created_at) per metric_type. PostgREST doesn't support aggregates here,
     // so fetch the most recent row per type via ordered limit per type. Simpler: fetch
-    // all chore_* rows in last 30 days and pick the latest per type client-side.
-    const since = new Date(Date.now() - 30 * 86400000).toISOString();
+    // all chore_* rows in last 365 days and pick the latest per type client-side.
+    // 365d window: if no reset in a year, treat as never-cleaned (worst state, pct=0).
+    const since = new Date(Date.now() - 365 * 86400000).toISOString();
     const url = `metrics?metric_type=in.(${types.join(',')})&created_at=gte.${since}&select=metric_type,created_at&order=created_at.desc`;
     const rows = await sbGet(url);
     CHORES_STATE = {};
