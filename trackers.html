@@ -134,6 +134,30 @@
   .bar-cell.zero { background: var(--border); }
   .bar-cell.today { outline: 1px solid var(--edit); outline-offset: 1px; }
 
+  /* chore reset timeline: dots on horizontal axis */
+  .timeline {
+    flex: 1;
+    position: relative;
+    height: 24px;
+    background: var(--border);
+    border-radius: 4px;
+  }
+  .timeline-dot {
+    position: absolute;
+    top: 50%;
+    width: 6px; height: 6px;
+    margin-left: -3px; margin-top: -3px;
+    background: var(--accent);
+    border-radius: 50%;
+  }
+  .timeline-today-mark {
+    position: absolute;
+    top: -2px; bottom: -2px;
+    width: 1px;
+    background: var(--edit);
+    right: 0;
+  }
+
   .loading {
     padding: 18px 16px; text-align: center; font-size: 13px;
     color: var(--text-faint);
@@ -175,10 +199,10 @@
 
 <section>
   <div class="section-head">
-    <h2>apartment</h2>
-    <span class="count" id="aptAvg"></span>
+    <h2>chores</h2>
+    <span class="count" id="choresCount"></span>
   </div>
-  <div class="card" id="apartmentCard"><div class="loading">loading…</div></div>
+  <div class="card" id="choresCard"><div class="loading">loading…</div></div>
 </section>
 
 <script>
@@ -226,11 +250,11 @@
     { key: 'cig_factory', metric_type: 'cig_factory', unit: 'cigs', label: 'cig (fac.)', target: 0,     fmt: v => `${v}` },
     { key: 'cig_rolled',  metric_type: 'cig_rolled',  unit: 'cigs', label: 'cig (rol.)', target: 0,     fmt: v => `${v}` },
   ];
-  const APT_TRACKERS = [
-    { key: 'apt_dishes',   metric_type: 'apartment', unit: 'dishes',   label: 'dishes' },
-    { key: 'apt_clothes',  metric_type: 'apartment', unit: 'clothes',  label: 'clothes' },
-    { key: 'apt_bathroom', metric_type: 'apartment', unit: 'bathroom', label: 'bathroom' },
-    { key: 'apt_living',   metric_type: 'apartment', unit: 'living',   label: 'living' },
+  const CHORES = [
+    { key: 'dishes',   metric_type: 'chore_dishes',   label: 'dishes',   cadence: 3 },
+    { key: 'living',   metric_type: 'chore_living',   label: 'living',   cadence: 3 },
+    { key: 'bathroom', metric_type: 'chore_bathroom', label: 'bathroom', cadence: 7 },
+    { key: 'kitchen',  metric_type: 'chore_kitchen',  label: 'kitchen',  cadence: 7 },
   ];
 
   async function sbGet(path) {
@@ -257,32 +281,37 @@
   }
 
   async function loadAll() {
-    // single fetch covers all tracker rows for the period
     const dates = daysArray(PERIOD_DAYS);
     const start = dates[0];
-    const allTypes = [...new Set([
+    const dailyTypes = [...new Set([
       ...HABIT_TRACKERS.map(c => c.metric_type),
       ...COUNTER_TRACKERS.map(c => c.metric_type),
-      ...APT_TRACKERS.map(c => c.metric_type),
     ])];
+    const choreTypes = CHORES.map(c => c.metric_type);
     try {
-      const rows = await sbGet(
-        `metrics?date=gte.${start}&date=lte.${TODAY}&metric_type=in.(${allTypes.join(',')})&select=date,metric_type,unit,value&order=date.asc`
-      );
-      // index: key by `${metric_type}|${unit}|${date}` -> value
+      const [dailyRows, choreRows] = await Promise.all([
+        sbGet(`metrics?date=gte.${start}&date=lte.${TODAY}&metric_type=in.(${dailyTypes.join(',')})&select=date,metric_type,unit,value&order=date.asc`),
+        sbGet(`metrics?metric_type=in.(${choreTypes.join(',')})&date=gte.${start}&date=lte.${TODAY}&select=metric_type,created_at&order=created_at.asc`),
+      ]);
       const idx = new Map();
-      rows.forEach(r => {
+      dailyRows.forEach(r => {
         idx.set(`${r.metric_type}|${r.unit}|${r.date}`, +r.value);
+      });
+      // group chore resets by metric_type
+      const resetsByType = new Map();
+      choreTypes.forEach(t => resetsByType.set(t, []));
+      choreRows.forEach(r => {
+        resetsByType.get(r.metric_type)?.push(r.created_at);
       });
       renderHabits(dates, idx);
       renderCounters(dates, idx);
-      renderApartment(dates, idx);
+      renderChores(dates, resetsByType);
     } catch (e) {
       console.error(e);
       document.getElementById('habitsCard').innerHTML =
         `<div class="error-msg">load failed: ${escapeHtml(e.message)}</div>`;
       document.getElementById('countersCard').innerHTML = '';
-      document.getElementById('apartmentCard').innerHTML = '';
+      document.getElementById('choresCard').innerHTML = '';
     }
   }
 
@@ -364,67 +393,46 @@
     document.getElementById('countersCard').innerHTML = rows;
   }
 
-  function renderApartment(dates, idx) {
-    // per-day score: count of 4 booleans checked
-    const dayScores = dates.map(d => {
-      let s = 0;
-      APT_TRACKERS.forEach(cfg => {
-        const v = idx.get(`${cfg.metric_type}|${cfg.unit}|${d}`);
-        if (v != null && v >= 1) s++;
-      });
-      return s;
-    });
-    // average across the period
-    const avg = dayScores.reduce((a, b) => a + b, 0) / dates.length;
-    document.getElementById('aptAvg').textContent = `avg ${avg.toFixed(1)}/4`;
+  function renderChores(dates, resetsByType) {
+    const start = new Date(dates[0] + 'T00:00:00').getTime();
+    const end = new Date(dates[dates.length - 1] + 'T23:59:59').getTime();
+    const span = end - start;
 
-    // first row: per-day score as a small bar
-    const scoreCells = dates.map((d, i) => {
-      const s = dayScores[i];
-      const h = (s / 4) * 100;
-      const cls = s === 4 ? 'target-met' : (s === 0 ? 'zero' : '');
-      const today = d === TODAY ? ' today' : '';
-      const title = `${fmtShortDate(d)}: ${s}/4`;
-      return `<div class="bar-cell ${cls}${today}" style="height: ${Math.max(h, 4)}%" title="${title}"></div>`;
-    }).join('');
-
-    // 4 boolean rows
-    const boolRows = APT_TRACKERS.map(cfg => {
-      const cells = dates.map(d => {
-        const v = idx.get(`${cfg.metric_type}|${cfg.unit}|${d}`);
-        const on = v != null && v >= 1;
-        const today = d === TODAY ? ' today' : '';
-        return `<div class="heatmap-cell ${on ? 'on' : ''}${today}"></div>`;
+    let totalResets = 0;
+    const rows = CHORES.map(cfg => {
+      const resets = resetsByType.get(cfg.metric_type) || [];
+      totalResets += resets.length;
+      const dots = resets.map(iso => {
+        const t = new Date(iso).getTime();
+        const pct = Math.max(0, Math.min(100, ((t - start) / span) * 100));
+        const label = new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }).toLowerCase();
+        return `<div class="timeline-dot" style="left:${pct}%" title="${label}"></div>`;
       }).join('');
-      const total = dates.reduce((s, d) => {
-        const v = idx.get(`${cfg.metric_type}|${cfg.unit}|${d}`);
-        return s + (v != null && v >= 1 ? 1 : 0);
-      }, 0);
+      const lastReset = resets.length > 0 ? resets[resets.length - 1] : null;
+      let sub = 'never';
+      if (lastReset) {
+        const hours = (Date.now() - new Date(lastReset).getTime()) / 3600000;
+        if (hours < 24) sub = `${Math.floor(hours)}h ago`;
+        else sub = `${Math.floor(hours / 24)}d ago`;
+      }
       return `
         <div class="tk-row">
           <div class="tk-meta">
             <div class="tk-label">${cfg.label}</div>
-            <div class="tk-sub">${total}/${dates.length} days</div>
+            <div class="tk-sub">${resets.length} reset${resets.length === 1 ? '' : 's'} · ${sub}</div>
           </div>
-          <div class="heatmap" style="grid-template-columns: repeat(${dates.length}, 1fr);">
-            ${cells}
+          <div class="timeline">
+            ${dots}
+            <div class="timeline-today-mark"></div>
           </div>
         </div>`;
     }).join('');
 
-    document.getElementById('apartmentCard').innerHTML = `
-      <div class="tk-row">
-        <div class="tk-meta">
-          <div class="tk-label">daily score</div>
-          <div class="tk-sub">x/4 clean</div>
-        </div>
-        <div class="bars" style="grid-template-columns: repeat(${dates.length}, 1fr);">
-          ${scoreCells}
-        </div>
-      </div>
-      ${boolRows}
-    `;
+    document.getElementById('choresCount').textContent =
+      `${totalResets} reset${totalResets === 1 ? '' : 's'} in ${dates.length}d`;
+    document.getElementById('choresCard').innerHTML = rows;
   }
 </script>
 </body>
 </html>
+
