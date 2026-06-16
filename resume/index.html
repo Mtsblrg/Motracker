@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tamás Balog — Resume</title>
+<title>Tamás Balog - Resume</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&family=Lato:wght@400;700&display=swap" rel="stylesheet">
@@ -32,8 +32,6 @@
     padding:18mm 16mm;
     box-shadow:0 2px 18px rgba(0,0,0,.16);
   }
-
-  /* ---- Header ---- */
   .name{
     font-family:'Montserrat',sans-serif;
     font-weight:800;
@@ -54,16 +52,12 @@
     border-top:1px solid var(--rule);
     margin:18px 0 0;
   }
-
-  /* ---- Two-column layout ---- */
   .cols{
     display:grid;
     grid-template-columns:32% 68%;
   }
   .side{ padding:22px 22px 0 0; }
   .main{ padding:22px 0 0 24px; border-left:1px solid var(--rule); }
-
-  /* ---- Section titles ---- */
   .sec{
     font-family:'Montserrat',sans-serif;
     font-weight:700;
@@ -81,8 +75,6 @@
     margin-top:7px;
   }
   .block{ margin-bottom:26px; }
-
-  /* ---- Sidebar details ---- */
   .d-label{
     font-family:'Montserrat',sans-serif;
     font-weight:700;
@@ -95,15 +87,11 @@
   .d-label:first-child{ margin-top:0; }
   .d-val{ font-size:12.5px; color:var(--body); }
   a{ color:var(--body); text-decoration:none; word-break:break-word; }
-
-  /* languages */
   .lang{ margin-bottom:12px; }
   .lang-name{ font-size:12.5px; color:var(--ink); margin-bottom:5px; display:flex; justify-content:space-between; }
   .lang-name span{ color:var(--meta); font-size:11px; }
   .bar{ height:4px; background:var(--bar-track); border-radius:2px; overflow:hidden; }
   .bar > i{ display:block; height:100%; background:var(--ink); }
-
-  /* skills */
   .skill-group{ margin-bottom:12px; }
   .skill-cat{
     font-family:'Montserrat',sans-serif; font-weight:600;
@@ -111,10 +99,7 @@
     color:var(--meta); margin-bottom:4px;
   }
   .skill-list{ font-size:12.5px; color:var(--body); line-height:1.6; }
-
-  /* ---- Main column ---- */
   .profile{ font-size:13px; color:var(--body); }
-
   .job{ margin-bottom:18px; }
   .job:last-child{ margin-bottom:0; }
   .job-head{ display:flex; justify-content:space-between; align-items:baseline; gap:12px; }
@@ -126,11 +111,8 @@
   ul.points li{ position:relative; padding-left:14px; margin-bottom:5px; font-size:12.5px; color:var(--body); }
   ul.points li::before{ content:""; position:absolute; left:0; top:8px; width:4px; height:4px; background:var(--ink); border-radius:50%; }
   strong{ color:var(--ink); font-weight:700; }
-
   .edu-line{ font-size:13px; color:var(--ink); }
   .edu-sub{ font-size:12px; color:var(--meta); margin-top:2px; }
-
-  /* ---- Print ---- */
   @media print{
     html,body{ background:#fff; padding:0; }
     .sheet{ width:auto; min-height:0; margin:0; padding:0; box-shadow:none; }
@@ -143,13 +125,11 @@
 <body>
 <div class="sheet">
 
-  <!-- Header -->
   <div class="name">Tamás<br>Balog</div>
   <div class="subtitle">Marketing Automation &amp; Systems Integration Specialist</div>
   <hr class="header-rule">
 
   <div class="cols">
-    <!-- ============ SIDEBAR ============ -->
     <aside class="side">
 
       <div class="block">
@@ -205,67 +185,66 @@
 
     </aside>
 
-    <!-- ============ MAIN ============ -->
     <main class="main">
 
       <div class="block">
         <div class="sec">Profile</div>
-        <p class="profile">Full-stack marketer with 10+ years across fast-moving startups and consultancies, specialising in marketing automation, systems integration and lead generation. Builds and owns complex automation systems and CRM integrations end-to-end, and works hands-on with REST APIs, webhooks and integration documentation — turning technical detail into plain language. Strong client-facing and account-management background, a fast independent learner, and fully trilingual.</p>
+        <p class="profile">Full-stack marketer with over 10 years of experience across startups and consultancies, focused on marketing automation, systems integration and lead generation. I build and run marketing automation systems and CRM integrations, and I work directly with REST APIs, webhooks and integration documentation. I have a strong client-facing background, pick up new tools quickly, and speak English, Hungarian and Romanian.</p>
       </div>
 
       <div class="block">
         <div class="sec">Employment History</div>
 
         <div class="job">
-          <div class="job-head"><div class="job-title">Digital Marketing Manager, CEE — MHC Mobility</div><div class="job-loc">Budapest</div></div>
-          <div class="job-date">Jul 2025 — Present</div>
+          <div class="job-head"><div class="job-title">Digital Marketing Manager (CEE), MHC Mobility</div><div class="job-loc">Budapest</div></div>
+          <div class="job-date">Jul 2025 - Present</div>
           <ul class="points">
-            <li>Grew high-quality lead volume by <strong>250% in 10 months</strong></li>
-            <li>Promoted from Marketing Manager to Digital Marketing Manager, CEE — remit expanded from Hungary alone to the wider Central &amp; Eastern Europe region, taking on Poland</li>
-            <li>Built an automated <strong>lead-enrichment system</strong> integrating Dun &amp; Bradstreet's database via <strong>SoapUI</strong> — auto-fetching company data on each incoming lead before routing it to the right sales rep</li>
-            <li>Own lead-generation performance and marketing automation across Hungary and Poland</li>
+            <li>Increased the number of high-quality leads by 250% in 10 months.</li>
+            <li>Promoted from Marketing Manager to Digital Marketing Manager (CEE), expanding my responsibility from Hungary to the wider CEE region, including Poland.</li>
+            <li>Built an automated lead-enrichment system that pulls company data from Dun &amp; Bradstreet (via SoapUI) for every incoming lead before it is assigned to a sales rep.</li>
+            <li>Responsible for lead-generation performance and marketing automation across Hungary and Poland.</li>
           </ul>
         </div>
 
         <div class="job">
-          <div class="job-head"><div class="job-title">Marketing Manager — Frisbo e-fulfillment</div><div class="job-loc">Remote</div></div>
-          <div class="job-date">Sep 2022 — Jul 2025</div>
-          <div class="job-context">One of Europe's largest e-fulfillment providers, operating in 20+ countries with a ~15-person startup team.</div>
+          <div class="job-head"><div class="job-title">Marketing Manager, Frisbo e-fulfillment</div><div class="job-loc">Remote</div></div>
+          <div class="job-date">Sep 2022 - Jul 2025</div>
+          <div class="job-context">One of the largest e-fulfillment providers in Europe, operating in more than 20 countries with a small startup team of about 15 people.</div>
           <ul class="points">
-            <li>Owned all marketing in a lean team — lead generation, content and webinars — working directly with prospects and clients across 20+ countries</li>
-            <li>Owned the company's entire <strong>HubSpot automation system</strong>, supporting both sales and marketing operations</li>
-            <li>Project lead for a full <strong>CRM migration</strong> from HubSpot to monday.com — mapped data, rebuilt workflows and coordinated delivery across teams</li>
+            <li>Responsible for all marketing in a small team, including lead generation, content creation and webinars, working directly with prospects and clients in more than 20 countries.</li>
+            <li>Ran the company's entire HubSpot automation system, supporting both sales and marketing.</li>
+            <li>Led a full CRM migration from HubSpot to monday.com, including data mapping, rebuilding workflows and coordinating the rollout across teams.</li>
           </ul>
         </div>
 
         <div class="job">
-          <div class="job-head"><div class="job-title">Marketing Team Leader — United Call Centers</div><div class="job-loc">Remote</div></div>
-          <div class="job-date">Feb 2022 — Sep 2022</div>
-          <div class="job-context">International customer-service company.</div>
+          <div class="job-head"><div class="job-title">Marketing Team Leader, United Call Centers</div><div class="job-loc">Remote</div></div>
+          <div class="job-date">Feb 2022 - Sep 2022</div>
+          <div class="job-context">An international customer-service company.</div>
           <ul class="points">
-            <li>Led a team of 8 marketers; hired specifically to rebuild an outdated marketing structure, processes and tooling</li>
-            <li>Worked across the full lead-gen → sales pipeline and directly alongside customer-service operations, improving sales-team results</li>
+            <li>Led a team of 8 marketers and rebuilt the team's outdated structure, processes and tools.</li>
+            <li>Worked across the full lead generation and sales pipeline, alongside customer-service operations, and improved the sales team's results.</li>
           </ul>
         </div>
 
         <div class="job">
-          <div class="job-head"><div class="job-title">Marketing Manager — Goodwill Consulting Group</div><div class="job-loc">Budapest</div></div>
-          <div class="job-date">Nov 2018 — Feb 2022</div>
-          <div class="job-context">Employed by Goodwill Consulting, with concurrent marketing responsibility across the group's companies:</div>
+          <div class="job-head"><div class="job-title">Marketing Manager, Goodwill Consulting Group</div><div class="job-loc">Budapest</div></div>
+          <div class="job-date">Nov 2018 - Feb 2022</div>
+          <div class="job-context">Employed by Goodwill Consulting, handling marketing for several companies in the group at the same time:</div>
           <ul class="points">
-            <li><strong>Goodwill Consulting (core role)</strong> — led lead generation, marketing &amp; sales automation, and operations for the multinational business &amp; grant consultancy (market leader in Hungary and Romania; also Bulgaria and Croatia)</li>
-            <li><strong>Harsányi Winery</strong> — pivoted the winery to online sales and tasting webinars during COVID, growing yearly revenue 4×</li>
-            <li><strong>Goodevent Kft</strong> — transitioned an offline events business online and into an agency model; managed key client accounts</li>
+            <li><strong>Goodwill Consulting (main role):</strong> managed lead generation, marketing and sales automation, and operations for this multinational business and grant consultancy, a market leader in Hungary and Romania and also active in Bulgaria and Croatia.</li>
+            <li><strong>Harsányi Winery:</strong> moved the winery to online sales and wine-tasting webinars during COVID, increasing its yearly revenue 4 times.</li>
+            <li><strong>Goodevent Kft:</strong> moved an offline event business online and into a marketing agency model, and managed key client accounts.</li>
           </ul>
         </div>
 
         <div class="job">
-          <div class="job-head"><div class="job-title">Lead Gen &amp; Marketing Automation Manager — Hyper Apps</div><div class="job-loc">Cluj-Napoca</div></div>
-          <div class="job-date">2016 — 2018</div>
+          <div class="job-head"><div class="job-title">Lead Generation &amp; Marketing Automation Manager, Hyper Apps</div><div class="job-loc">Cluj-Napoca</div></div>
+          <div class="job-date">2016 - 2018</div>
           <ul class="points">
-            <li>Built the lead-generation and marketing-automation engine for an international app-development &amp; consulting startup</li>
-            <li>Stepped into project management — worked face-to-face with founders, managed product builds and secured funding for 9 of 15 clients</li>
-            <li>Acted as the bridge between business stakeholders and technical app-development teams</li>
+            <li>Built the lead-generation and marketing-automation engine for an international app development and consulting startup.</li>
+            <li>Also took on a project management role, working face to face with founders, managing product builds and securing funding for 9 of 15 clients.</li>
+            <li>Worked as the link between business stakeholders and the technical development teams.</li>
           </ul>
         </div>
       </div>
@@ -273,21 +252,21 @@
       <div class="block">
         <div class="sec">Earlier Experience</div>
         <ul class="points">
-          <li><strong>StreetMusic Festival SM</strong> — Communications Director, Satu Mare (~2017–2018): social media &amp; PR for an event drawing 20,000+ visitors and 150+ artists</li>
-          <li><strong>Travelminit.ro</strong> — Marketing Specialist, Cluj-Napoca (2015–2016): first marketing hire; built and automated the company's core marketing framework</li>
+          <li><strong>StreetMusic Festival SM,</strong> Communications Director, Satu Mare (2017-2018): handled social media and PR for an event with more than 20,000 visitors and 150 artists each year.</li>
+          <li><strong>Travelminit.ro,</strong> Marketing Specialist, Cluj-Napoca (2015-2016): the first marketing hire, where I built and automated the company's core marketing framework.</li>
         </ul>
       </div>
 
       <div class="block">
         <div class="sec">Education</div>
-        <div class="edu-line">Communications &amp; PR — Babeș-Bolyai University, Cluj-Napoca (2014–2016)</div>
+        <div class="edu-line">Communications &amp; PR, Babeș-Bolyai University, Cluj-Napoca (2014-2016)</div>
         <div class="edu-sub">Marketing, Advertising, Public Relations, Copywriting, Applied Communications</div>
       </div>
 
       <div class="block">
         <div class="sec">Technical / Side Projects</div>
         <ul class="points">
-          <li>Build and self-host personal automation pipelines using REST APIs, webhooks, serverless functions and SQL — hands-on comfort reading API documentation and integrating systems end to end</li>
+          <li>I build and self-host my own automation pipelines using REST APIs, webhooks, serverless functions and SQL, so I am used to reading API documentation and integrating systems myself.</li>
         </ul>
       </div>
 
