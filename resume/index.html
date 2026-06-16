@@ -278,15 +278,23 @@
 </div>
 <script>
 function saveOnePage(){
-  (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(function(){
+  var ready = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
+  ready.then(function(){
     var sheet=document.querySelector('.sheet');
-    var mm=Math.ceil(sheet.offsetHeight*25.4/96)+6;
+    var r=sheet.getBoundingClientRect();
+    var wmm=Math.round(r.width*25.4/96);
+    var hmm=Math.ceil(r.height*25.4/96)+4;
     var old=document.getElementById('op'); if(old) old.remove();
     var s=document.createElement('style'); s.id='op';
-    s.textContent='@media print{@page{size:210mm '+mm+'mm;margin:0;}html,body{background:#fff;}'+
-      '.sheet{width:210mm;padding:18mm 16mm;margin:0;box-shadow:none;min-height:0;}.noprint{display:none;}}';
+    s.textContent='@media print{'
+      +'@page{size:'+wmm+'mm '+hmm+'mm;margin:0;}'
+      +'html,body{margin:0!important;padding:0!important;background:#fff!important;width:'+wmm+'mm!important;overflow:hidden!important;}'
+      +'.sheet{width:'+wmm+'mm!important;min-height:0!important;margin:0!important;padding:18mm 16mm!important;box-shadow:none!important;}'
+      +'.cols{width:100%!important;}'
+      +'.noprint{display:none!important;}'
+      +'}';
     document.head.appendChild(s);
-    setTimeout(function(){window.print();},80);
+    setTimeout(function(){window.print();},90);
   });
 }
 </script>
