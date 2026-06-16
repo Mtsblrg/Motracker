@@ -118,11 +118,14 @@
     .sheet{ width:auto; min-height:0; margin:0; padding:0; box-shadow:none; }
     @page{ margin:14mm; }
     .job{ break-inside:avoid; }
+    .noprint{ display:none; }
     a{ color:var(--body); }
   }
 </style>
 </head>
 <body>
+<button class="noprint" onclick="saveOnePage()" aria-label="Save as one long page PDF"
+  style="position:fixed;top:14px;right:14px;z-index:9999;font-family:Arial,sans-serif;font-size:13px;font-weight:bold;background:#1a1a1a;color:#fff;border:0;border-radius:6px;padding:10px 14px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.25);">Save as one long page (PDF)</button>
 <div class="sheet">
 
   <div class="name">Tamás<br>Balog</div>
@@ -273,5 +276,19 @@
     </main>
   </div>
 </div>
+<script>
+function saveOnePage(){
+  (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(function(){
+    var sheet=document.querySelector('.sheet');
+    var mm=Math.ceil(sheet.offsetHeight*25.4/96)+6;
+    var old=document.getElementById('op'); if(old) old.remove();
+    var s=document.createElement('style'); s.id='op';
+    s.textContent='@media print{@page{size:210mm '+mm+'mm;margin:0;}html,body{background:#fff;}'+
+      '.sheet{width:210mm;padding:18mm 16mm;margin:0;box-shadow:none;min-height:0;}.noprint{display:none;}}';
+    document.head.appendChild(s);
+    setTimeout(function(){window.print();},80);
+  });
+}
+</script>
 </body>
 </html>
