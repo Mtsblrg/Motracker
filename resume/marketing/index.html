@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tamás Balog - Resume</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{--ink:#1a1a1a;--body:#4a4a4a;--meta:#8a8a8a;--rule:#d9d9d9;--bar-track:#e6e6e6;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{background:#ececec;}
+  body{font-family:'Lato',Arial,sans-serif;color:var(--body);font-size:13px;line-height:1.5;padding:24px 0;}
+  .sheet{width:210mm;min-height:297mm;margin:0 auto;background:#fff;padding:18mm 16mm;box-shadow:0 2px 18px rgba(0,0,0,.16);}
+  .name{font-family:'Montserrat',sans-serif;font-weight:800;text-transform:uppercase;color:var(--ink);font-size:46px;line-height:.98;letter-spacing:2px;}
+  .subtitle{margin-top:12px;color:var(--meta);font-size:14px;letter-spacing:1px;}
+  .header-rule{border:0;border-top:1px solid var(--rule);margin:18px 0 0;}
+  .cols{display:grid;grid-template-columns:32% 68%;}
+  .side{padding:22px 22px 0 0;}
+  .main{padding:22px 0 0 24px;border-left:1px solid var(--rule);}
+  .sec{font-family:'Montserrat',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:2.5px;color:var(--ink);font-size:15px;margin-bottom:14px;}
+  .sec::after{content:"";display:block;width:32px;height:3px;background:var(--ink);margin-top:7px;}
+  .block{margin-bottom:26px;}
+  .d-label{font-family:'Montserrat',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--ink);font-size:11.5px;margin-top:12px;}
+  .d-label:first-child{margin-top:0;}
+  .d-val{font-size:12.5px;color:var(--body);}
+  a{color:var(--body);text-decoration:none;word-break:break-word;}
+  .lang{margin-bottom:12px;}
+  .lang-name{font-size:12.5px;color:var(--ink);margin-bottom:5px;display:flex;justify-content:space-between;}
+  .lang-name span{color:var(--meta);font-size:11px;}
+  .lang-note{font-size:10px;color:var(--meta);margin-top:3px;}
+  .bar{height:4px;background:var(--bar-track);border-radius:2px;overflow:hidden;}
+  .bar > i{display:block;height:100%;background:var(--ink);}
+  .skill-group{margin-bottom:12px;}
+  .skill-cat{font-family:'Montserrat',sans-serif;font-weight:600;text-transform:uppercase;letter-spacing:.5px;font-size:10.5px;color:var(--meta);margin-bottom:4px;}
+  .skill-list{font-size:12.5px;color:var(--body);line-height:1.6;}
+  .profile{font-size:13px;color:var(--body);}
+  .job{margin-bottom:18px;}
+  .job:last-child{margin-bottom:0;}
+  .job-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;}
+  .job-title{font-family:'Montserrat',sans-serif;font-weight:600;font-size:14px;color:var(--ink);}
+  .job-loc{color:var(--meta);font-size:11px;white-space:nowrap;}
+  .job-date{color:var(--meta);font-size:11.5px;letter-spacing:.5px;margin:2px 0 7px;}
+  .job-context{font-size:12px;color:var(--meta);font-style:italic;margin-bottom:6px;}
+  ul.points{list-style:none;}
+  ul.points li{position:relative;padding-left:14px;margin-bottom:5px;font-size:12.5px;color:var(--body);}
+  ul.points li::before{content:"";position:absolute;left:0;top:8px;width:4px;height:4px;background:var(--ink);border-radius:50%;}
+  strong{color:var(--ink);font-weight:700;}
+  .edu-line{font-size:13px;color:var(--ink);}
+  .edu-sub{font-size:12px;color:var(--meta);margin-top:2px;}
+  @media print{
+    html,body{background:#fff;padding:0;}
+    .sheet{width:auto;min-height:0;margin:0;padding:0;box-shadow:none;}
+    @page{margin:14mm;}
+    .job{break-inside:avoid;}
+    .noprint{display:none;}
+    a{color:var(--body);}
+  }
+</style>
+</head>
+<body>
+<button class="noprint" onclick="saveOnePage()" aria-label="Save as one long page PDF"
+  style="position:fixed;top:14px;right:14px;z-index:9999;font-family:Arial,sans-serif;font-size:13px;font-weight:bold;background:#1a1a1a;color:#fff;border:0;border-radius:6px;padding:10px 14px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.25);">Save as one long page (PDF)</button>
+<div class="sheet">
+
+  <div class="name">Tamás<br>Balog</div>
+  <div class="subtitle">Full-Stack Marketing Manager</div>
+  <hr class="header-rule">
+
+  <div class="cols">
+    <aside class="side">
+
+      <div class="block">
+        <div class="sec">Details</div>
+        <div class="d-label">Address</div>
+        <div class="d-val">Budapest, Hungary<br>Cluj-Napoca / Satu Mare, Romania</div>
+        <div class="d-label">Phone</div>
+        <div class="d-val">+36 20 386 3796 (HU)<br>+40 752 145 808 (RO)</div>
+        <div class="d-label">Email</div>
+        <div class="d-val"><a href="mailto:b4tamas@gmail.com">b4tamas@gmail.com</a></div>
+      </div>
+
+      <div class="block">
+        <div class="sec">LinkedIn</div>
+        <div class="d-val"><a href="https://linkedin.com/in/tamasba">LinkedIn.com/in/tamasba</a></div>
+      </div>
+
+      <div class="block">
+        <div class="sec">Languages</div>
+        <div class="lang">
+          <div class="lang-name">Hungarian <span>Native</span></div>
+          <div class="bar"><i style="width:100%"></i></div>
+        </div>
+        <div class="lang">
+          <div class="lang-name">English <span>Native-level (C2)</span></div>
+          <div class="bar"><i style="width:100%"></i></div>
+        </div>
+        <div class="lang">
+          <div class="lang-name">Romanian <span>Fluent</span></div>
+          <div class="bar"><i style="width:80%"></i></div>
+        </div>
+      </div>
+
+      <div class="block">
+        <div class="sec">Skills &amp; Tools</div>
+        <div class="skill-group">
+          <div class="skill-cat">Core Marketing</div>
+          <div class="skill-list">Marketing strategy · Paid acquisition (PPC) · Lead generation · Content &amp; copywriting</div>
+        </div>
+        <div class="skill-group">
+          <div class="skill-cat">Marketing Automation &amp; CRM</div>
+          <div class="skill-list">Zapier · HubSpot · Power Automate · monday.com · Mailchimp · Klaviyo</div>
+        </div>
+        <div class="skill-group">
+          <div class="skill-cat">Analytics &amp; Data</div>
+          <div class="skill-list">Google Analytics · Looker Studio · Power BI · SQL</div>
+        </div>
+        <div class="skill-group">
+          <div class="skill-cat">Creative &amp; Technical</div>
+          <div class="skill-list">Adobe Creative Suite · REST APIs · GitHub · Custom-built martech and automation</div>
+        </div>
+      </div>
+
+    </aside>
+
+    <main class="main">
+
+      <div class="block">
+        <div class="sec">Profile</div>
+        <p class="profile">Full-stack marketing manager with over 10 years building and running complete marketing operations, from strategy and copy through to paid acquisition and automation. I have worked in-house, through consultancies and as an independent running my own agency, for companies ranging from Australian and UK startups to established Western and Central European brands. I am as comfortable setting the strategy as I am building and running the work that delivers it.</p>
+      </div>
+
+      <div class="block">
+        <div class="sec">Employment History</div>
+
+        <div class="job">
+          <div class="job-head"><div class="job-title">Digital Marketing Manager (CEE), MHC Mobility</div><div class="job-loc">Budapest</div></div>
+          <div class="job-date">Jul 2025 - Present</div>
+          <ul class="points">
+            <li>Increased the number of high-quality leads by 250% in 10 months.</li>
+            <li>Grew the number of contracts signed from those leads by 150%, finishing 70% above my target.</li>
+            <li>With no suitable internal CRM in place, custom-built the full lead management methodology and flow that takes leads from signup to signed contract, including automated company data enrichment from Dun &amp; Bradstreet.</li>
+            <li>Promoted from Hungarian Marketing Manager to CEE Marketing Manager, owning digital strategy and lead generation performance across Hungary and Poland.</li>
+          </ul>
+        </div>
+
+        <div class="job">
+          <div class="job-head"><div class="job-title">Marketing Manager (Contract), Frisbo e-fulfillment</div><div class="job-loc">Remote</div></div>
+          <div class="job-date">Sep 2022 - Jul 2025</div>
+          <div class="job-context">Flagship client of my independent marketing practice, where the whole team worked as contractors. One of the largest e-fulfillment providers in Europe, operating in more than 20 countries.</div>
+          <ul class="points">
+            <li>Owned the company's entire marketing, covering strategy, lead generation, content and webinars.</li>
+            <li>Built and ran the company's complete HubSpot marketing automation, automating demand generation and the full marketing-to-sales handoff.</li>
+            <li>Led a full CRM migration from HubSpot to monday.com, including data mapping and rebuilding the marketing and sales workflows.</li>
+          </ul>
+        </div>
+
+        <div class="job">
+          <div class="job-head"><div class="job-title">Marketing Team Leader (Fixed-Term Contract), United Call Centers</div><div class="job-loc">Remote</div></div>
+          <div class="job-date">Feb 2022 - Sep 2022</div>
+          <div class="job-context">A fixed-term turnaround project taken on during my independent years.</div>
+          <ul class="points">
+            <li>Led a team of 8 marketers and rebuilt the team's outdated structure, processes and tools within a defined project timeline.</li>
+            <li>Worked across the full lead generation and sales pipeline and improved the sales team's results.</li>
+          </ul>
+        </div>
+
+        <div class="job">
+          <div class="job-head"><div class="job-title">Marketing Manager, Goodwill Consulting Group</div><div class="job-loc">Budapest</div></div>
+          <div class="job-date">Nov 2018 - Feb 2022</div>
+          <div class="job-context">Employed by Goodwill Consulting, handling marketing for several companies in the group at the same time:</div>
+          <ul class="points">
+            <li><strong>Goodwill Consulting (main role):</strong> managed lead generation and marketing and sales automation for this multinational business and grant consultancy, a market leader in Hungary and Romania and also active in Bulgaria and Croatia.</li>
+            <li><strong>Harsányi Winery:</strong> as the winery's marketer, had to move the entire business online when COVID shut down the HoReCa channel that had driven most of its sales, and still grew yearly revenue to four times its pre-COVID level.</li>
+            <li><strong>Goodevent Kft:</strong> another COVID-driven pivot, turning an offline event business into an online marketing agency while managing its key client accounts.</li>
+          </ul>
+        </div>
+
+        <div class="job">
+          <div class="job-head"><div class="job-title">Lead Generation &amp; Marketing Automation Manager, Hyper Apps</div><div class="job-loc">Cluj-Napoca</div></div>
+          <div class="job-date">2016 - 2018</div>
+          <ul class="points">
+            <li>Built the lead generation and marketing automation engine for an international app development and consulting startup.</li>
+            <li>Helped startup founders prepare for seed and angel investment pitches.</li>
+            <li>Provided sales support, managing leads across the entire funnel.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="block">
+        <div class="sec">Earlier Experience</div>
+        <ul class="points">
+          <li><strong>StreetMusic Festival SM,</strong> Founding Member &amp; Communications Director, Satu Mare (2017-2018): part of the founding team that launched the festival and ran its communications end to end, for an event with more than 20,000 visitors and 150 artists each year.</li>
+          <li><strong>Travelminit.ro,</strong> Marketing Specialist, Cluj-Napoca (2015-2016): the first marketing hire at what became one of the most successful Transylvanian startups, where I built and automated its core marketing framework.</li>
+        </ul>
+      </div>
+
+      <div class="block">
+        <div class="sec">Education</div>
+        <div class="edu-line">Communications &amp; PR, Babeș-Bolyai University, Cluj-Napoca (2014-2016)</div>
+        <div class="edu-sub">Marketing, Advertising, Public Relations, Copywriting, Applied Communications</div>
+      </div>
+
+    </main>
+  </div>
+</div>
+<script>
+function saveOnePage(){
+  var ready = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
+  ready.then(function(){
+    var sheet=document.querySelector('.sheet');
+    var r=sheet.getBoundingClientRect();
+    var wmm=Math.round(r.width*25.4/96);
+    var hmm=Math.ceil(r.height*25.4/96)+4;
+    var old=document.getElementById('op'); if(old) old.remove();
+    var s=document.createElement('style'); s.id='op';
+    s.textContent='@media print{'
+      +'@page{size:'+wmm+'mm '+hmm+'mm;margin:0;}'
+      +'html,body{margin:0!important;padding:0!important;background:#fff!important;width:'+wmm+'mm!important;overflow:hidden!important;}'
+      +'.sheet{width:'+wmm+'mm!important;min-height:0!important;margin:0!important;padding:18mm 16mm!important;box-shadow:none!important;}'
+      +'.cols{width:100%!important;}'
+      +'.noprint{display:none!important;}'
+      +'}';
+    document.head.appendChild(s);
+    setTimeout(function(){window.print();},90);
+  });
+}
+</script>
+</body>
+</html>
